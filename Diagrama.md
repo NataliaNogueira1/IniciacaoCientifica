@@ -1,11 +1,6 @@
 1. Diagrama de banco de dados
     ```mermaid
         classDiagram
-        class Usuario {
-            +id: UUID
-            +nome: string
-            +sobrenome: string
-        }
         
         class Localizacao {
             +id: UUID
@@ -35,7 +30,6 @@
         
         class RegistroSaude {
             +id: UUID
-            +idUsuario: UUID
             +idColmeia: UUID
             +idRegistroSensor: UUID
             +dataHora: datetime
@@ -50,7 +44,6 @@
             Localizacao "1" --> "0..*" Colmeia
             Colmeia "1" --> "0..*" RegistroSensor
             Colmeia "1" --> "0..*" RegistroSaude
-            Usuario "1" --> "0..*" RegistroSaude
             RegistroSensor "1" --> "1" RegistroSaude
 
     ```
