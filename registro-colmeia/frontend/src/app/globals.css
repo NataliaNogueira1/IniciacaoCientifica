@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-yellow-950: #451a03;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: url('data:image/svg+xml;utf8,<svg version="1.1" viewBox="0 0 183.2 300" xmlns="http://www.w3.org/2000/svg" width="183.2" height="300"><g fill="none" stroke-width="10" stroke="%23ffcd12" opacity="0.4"><g transform="translate(5 5)"><path d="M 43.3 0 86.6 25 86.6 75 43.3 100 0 75 0 25 z"></path><g transform="translate(86.6 0)"><path d="M 43.3 0 86.6 25 86.6 75 43.3 100 0 75 0 25 z"></path></g><g transform="translate(43.3 75)"><path d="M 43.3 0 86.6 25 86.6 75 43.3 100 0 75 0 25 z"></path></g><g transform="translate(0 150)"><path d="M 43.3 0 86.6 25 86.6 75 43.3 100 0 75 0 25 z"></path><g transform="translate(86.6 0)"><path d="M 43.3 0 86.6 25 86.6 75 43.3 100 0 75 0 25 z"></path></g><g transform="translate(43.3 75)"><path d="M 43.3 0 86.6 25 86.6 75 43.3 100 0 75 0 25 z"></path></g></g></g></g></svg>'), #ffe345;
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ── Bee Button Animation ─────────────────────────────────────── */
+
+.bee-char {
+  display: inline-block;
+  position: relative;
+  font-weight: 900;
+  color: #1a1a1a;
+  z-index: 2;
+}
+
+/* Asas — invisíveis em repouso */
+.bee-wing {
+  position: absolute;
+  width: 13px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1.5px #92400e;
+  border-radius: 50px 50px 0 0;
+  top: 2px;
+  left: -12px;
+  transform-origin: bottom right;
+  opacity: 0;
+  pointer-events: none;
+  animation: bee-flap 0.07s ease-in-out infinite alternate;
+}
+
+@keyframes bee-flap {
+  from { transform: rotate(-20deg); }
+  to   { transform: rotate(30deg);  }
+}
+
+/* Quando voando: mostra asas e dispara flyaway */
+.bee-char--fly .bee-wing {
+  opacity: 1;
+}
+
+@keyframes bee-flyaway {
+  0%   { offset-distance: 0%;   opacity: 1; margin-top: 10px; }
+  20%  { offset-distance: 0%;   opacity: 1; margin-top: 10px; }
+  90%  { offset-distance: 100%; opacity: 1; margin-top: 0;    }
+  100% { offset-distance: 110%; opacity: 0; margin-top: -20px;}
+}
