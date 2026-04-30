@@ -15,24 +15,27 @@ erDiagram
         string nome
     }
 
-    RegistroSensor {
+    Sensor {
         UUID id PK
         UUID idColmeia FK
-        datetime dataHora
-        decimal temperaturaInterna
-        decimal temperaturaExterna
-        decimal umidadeInterna
-        decimal umidadeExterna
-        decimal pressaoAtmosferica
-        decimal velocidadeVento
-        decimal peso
+        string tipo
     }
 
-    RegistroSaude {
+    Registro {
         UUID id PK
-        UUID idColmeia FK
-        UUID idRegistroSensor FK
         datetime dataHora
+    }
+
+    Leitura {
+        UUID idRegistro PK "FK"
+        UUID idSensor FK
+        enum tipo
+        decimal registro
+    }
+
+    Saude {
+        UUID idRegistro PK "FK"
+        UUID idColmeia FK
         boolean presencaRainha
         enum comida
         enum condicaoClimatica
@@ -40,9 +43,19 @@ erDiagram
         string observacoes
     }
 
-    Localizacao ||--|{ Colmeia : possui
-    Colmeia ||--|{ RegistroSensor : gera
-    Colmeia ||--|{ RegistroSaude : possui
-    RegistroSensor ||--|| RegistroSaude : referencia
+    Localizacao ||--|{ Colmeia : "1:N"
+    Colmeia ||--|{ Sensor : "1:N"
+    Sensor ||--|{ Leitura : "1:N"
+    Colmeia ||--|{ Saude : "1:N"
+    Registro ||--o| Leitura : possui
+    Registro ||--o| Saude : possui
 
+%% Opções de tipo de leitura
+%% decimal temperaturaInterna
+%% decimal temperaturaExterna
+%% decimal umidadeInterna
+%% decimal umidadeExterna
+%% decimal pressaoAtmosferica
+%% decimal velocidadeVento
+%% decimal peso
 ```
