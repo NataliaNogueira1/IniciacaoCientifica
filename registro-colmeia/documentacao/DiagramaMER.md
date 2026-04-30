@@ -18,7 +18,7 @@ erDiagram
     Sensor {
         UUID id PK
         UUID idColmeia FK
-        string tipo
+        enum tipo
     }
 
     Registro {
@@ -47,14 +47,14 @@ erDiagram
     Colmeia ||--|{ Sensor : "1:N"
     Sensor ||--|{ Leitura : "1:N"
     Colmeia ||--|{ Saude : "1:N"
-    Registro ||--o| Leitura : possui
-    Registro ||--o| Saude : possui
+    Registro ||--|| Leitura : possui
+    Registro ||--|| Saude : possui
 
 %% Opções de tipo de leitura
 %% decimal temperaturaInterna
 %% decimal temperaturaExterna
-%% decimal umidadeInterna
 %% decimal umidadeExterna
+%% decimal umidadeInterna
 %% decimal pressaoAtmosferica
 %% decimal velocidadeVento
 %% decimal peso
