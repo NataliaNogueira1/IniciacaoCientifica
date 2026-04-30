@@ -13,6 +13,7 @@
         class Colmeia {
             +id: UUID
             +idLocalizacao: UUID
+            +nome: string
         }
         
         class RegistroSensor {
