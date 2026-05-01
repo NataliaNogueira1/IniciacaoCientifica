@@ -29,8 +29,13 @@ erDiagram
     Leitura {
         UUID idRegistro PK "FK"
         UUID idSensor FK
-        enum tipo
-        decimal registro
+        decimal temperaturaInterna
+        decimal temperaturaExterna
+        decimal umidadeInterna
+        decimal umidadeExterna
+        decimal pressaoAtmosferica
+        decimal velocidadeVento
+        decimal peso
     }
 
     Saude {
@@ -50,12 +55,4 @@ erDiagram
     Registro ||--|| Leitura : possui
     Registro ||--|| Saude : possui
 
-%% Opções de tipo de leitura
-%% decimal temperaturaInterna
-%% decimal temperaturaExterna
-%% decimal umidadeExterna
-%% decimal umidadeInterna
-%% decimal pressaoAtmosferica
-%% decimal velocidadeVento
-%% decimal peso
 ```
