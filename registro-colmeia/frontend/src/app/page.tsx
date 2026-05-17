@@ -31,6 +31,9 @@ interface FormData {
   comida: string;
   condicaoClimatica: string;
   saudavel: string;
+  predadorPresente: string;
+  tipoPredador: string;
+  tipoPredadorOutros: string;
   observacoes: string;
 }
 
@@ -48,6 +51,9 @@ const initialForm: FormData = {
   comida: "",
   condicaoClimatica: "",
   saudavel: "",
+  predadorPresente: "",
+  tipoPredador: "",
+  tipoPredadorOutros: "",
   observacoes: "",
 };
 
@@ -134,7 +140,17 @@ export default function Home() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    setForm((p) => {
+      const next = { ...p, [name]: value };
+      if (name === "predadorPresente" && value !== "SIM") {
+        next.tipoPredador = "";
+        next.tipoPredadorOutros = "";
+      }
+      if (name === "tipoPredador" && value !== "OUTROS") {
+        next.tipoPredadorOutros = "";
+      }
+      return next;
+    });
   }
 
   function handleSaveClick() {
@@ -329,6 +345,45 @@ export default function Home() {
                     { value: "NAO", label: "Não" },
                   ]}
                 />
+                <SelectField
+                  label="Predador presente?"
+                  id="predadorPresente"
+                  required
+                  placeholder="Selecione se há predador na colmeia"
+                  value={form.predadorPresente}
+                  onChange={handleChange}
+                  options={[
+                    { value: "SIM", label: "Sim" },
+                    { value: "NAO", label: "Não" },
+                  ]}
+                />
+                {form.predadorPresente === "SIM" && (
+                  <SelectField
+                    label="Tipo de predador"
+                    id="tipoPredador"
+                    required
+                    placeholder="Selecione o tipo de predador"
+                    value={form.tipoPredador}
+                    onChange={handleChange}
+                    options={[
+                      { value: "FORMIGAS", label: "Formigas" },
+                      { value: "LAGARTIXAS", label: "Lagartixas" },
+                      { value: "FORIDEO", label: "Forídeo" },
+                      { value: "OUTROS", label: "Outros" },
+                    ]}
+                  />
+                )}
+                {form.predadorPresente === "SIM" && form.tipoPredador === "OUTROS" && (
+                  <InputText
+                    label="Especifique o predador"
+                    id="tipoPredadorOutros"
+                    required
+                    placeholder="Descreva o tipo de predador"
+                    value={form.tipoPredadorOutros}
+                    onChange={handleChange}
+                    className="sm:col-span-2"
+                  />
+                )}
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="observacoes" className="text-sm font-semibold text-yellow-950">
