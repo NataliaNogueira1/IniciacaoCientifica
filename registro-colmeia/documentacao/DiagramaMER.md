@@ -42,6 +42,8 @@ erDiagram
         UUID idRegistro PK "FK"
         UUID idColmeia FK
         boolean presencaRainha
+        boolean presencaPredador
+        enum tipoPredador
         enum comida
         enum condicaoClimatica
         boolean saudavel
