@@ -1,0 +1,6 @@
+@ColmeiaApi_HostAddress = http://localhost:5027
+
+GET {{ColmeiaApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

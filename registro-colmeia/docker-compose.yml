@@ -1,0 +1,49 @@
+services:
+  mariadb:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root_secret
+      MARIADB_DATABASE: colmeia
+      MARIADB_USER: colmeia_user
+      MARIADB_PASSWORD: colmeia_pass
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./banco/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect"]
+      interval: 10s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__Default: "Server=mariadb;Port=3306;Database=colmeia;User=colmeia_user;Password=colmeia_pass;"
+      ASPNETCORE_ENVIRONMENT: Production
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      # Usado pelo next.config.ts para reescrever /api/* → backend (SSR/RSC)
+      API_INTERNAL_URL: "http://backend:8080"
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  mariadb_data:

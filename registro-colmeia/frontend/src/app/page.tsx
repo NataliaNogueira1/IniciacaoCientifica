@@ -57,6 +57,25 @@ const initialForm: FormData = {
   observacoes: "",
 };
 
+function parseNum(value: string): number | null {
+  if (!value.trim()) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function buildObservacoes(form: FormData): string | null {
+  const parts: string[] = [];
+  if (form.observacoes.trim()) parts.push(form.observacoes.trim());
+  if (
+    form.predadorPresente === "SIM" &&
+    form.tipoPredador === "OUTROS" &&
+    form.tipoPredadorOutros.trim()
+  ) {
+    parts.push(`Predador (outros): ${form.tipoPredadorOutros.trim()}`);
+  }
+  return parts.length > 0 ? parts.join("\n") : null;
+}
+
 /** Lança abelhinhas dos inputs preenchidos e chama onDone quando termina */
 function launchBees(rects: DOMRect[], onDone: () => void) {
   const validRects = rects.filter(
@@ -121,6 +140,7 @@ export default function Home() {
   const [saving, setSaving]           = useState(false);
   const [beesFlying, setBeesFlying]   = useState(false);
   const [submitted, setSubmitted]     = useState(false);
+  const [error, setError]             = useState<string | null>(null);
   const [localizacao, setLocalizacao] = useState<(typeof COLMEIAS)[string] | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -166,9 +186,42 @@ export default function Home() {
     // Dispara animação imediatamente (sem setState antes)
     launchBees(rects, async () => {
       setSaving(true);
-      await new Promise((r) => setTimeout(r, 600));
-      setSaving(false);
-      setSubmitted(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/registros", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            colmeia: form.colmeia,
+            dataHora: new Date(form.dataHora).toISOString(),
+            temperaturaInterna: parseNum(form.temperaturaInterna),
+            temperaturaExterna: parseNum(form.temperaturaExterna),
+            umidadeInterna: parseNum(form.umidadeInterna),
+            umidadeExterna: parseNum(form.umidadeExterna),
+            pressaoAtmosferica: parseNum(form.pressaoAtmosferica),
+            velocidadeVento: parseNum(form.velocidadeVento),
+            peso: parseNum(form.peso),
+            presencaRainha: form.presencaRainha === "SIM",
+            presencaPredador: form.predadorPresente === "SIM",
+            tipoPredador:
+              form.predadorPresente === "SIM" ? form.tipoPredador || null : null,
+            comida: form.comida,
+            condicaoClimatica: form.condicaoClimatica,
+            saudavel: form.saudavel === "SIM",
+            observacoes: buildObservacoes(form),
+          }),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { message?: string } | null;
+          throw new Error(data?.message ?? "Erro ao salvar registro");
+        }
+        setSubmitted(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro ao salvar registro");
+      } finally {
+        setSaving(false);
+        setBeesFlying(false);
+      }
     });
 
     setBeesFlying(true);
@@ -178,6 +231,7 @@ export default function Home() {
     setSubmitted(false);
     setSaving(false);
     setBeesFlying(false);
+    setError(null);
     setForm(initialForm);
     setLocalizacao(null);
   }
@@ -401,6 +455,12 @@ export default function Home() {
                 />
               </div>
             </fieldset>
+
+            {error && (
+              <p role="alert" className="text-sm text-red-600 rounded-md border border-red-200 bg-red-50 px-3 py-2">
+                {error}
+              </p>
+            )}
 
             <div className="flex flex-row gap-3 pt-2">
               <BeeButton
