@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Usuario\\Desktop\\ADS\\3 semestre\\IniciacaoCientifica\\registro-colmeia\\backend\\ColmeiaApi\\ColmeiaApi.csproj": {}
+    "C:\\Users\\natal\\Desktop\\ADS\\3_semestre\\IniciacaoCientifica\\registro-colmeia\\backend\\ColmeiaApi\\ColmeiaApi.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Usuario\\Desktop\\ADS\\3 semestre\\IniciacaoCientifica\\registro-colmeia\\backend\\ColmeiaApi\\ColmeiaApi.csproj": {
+    "C:\\Users\\natal\\Desktop\\ADS\\3_semestre\\IniciacaoCientifica\\registro-colmeia\\backend\\ColmeiaApi\\ColmeiaApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Usuario\\Desktop\\ADS\\3 semestre\\IniciacaoCientifica\\registro-colmeia\\backend\\ColmeiaApi\\ColmeiaApi.csproj",
+        "projectUniqueName": "C:\\Users\\natal\\Desktop\\ADS\\3_semestre\\IniciacaoCientifica\\registro-colmeia\\backend\\ColmeiaApi\\ColmeiaApi.csproj",
         "projectName": "ColmeiaApi",
-        "projectPath": "C:\\Users\\Usuario\\Desktop\\ADS\\3 semestre\\IniciacaoCientifica\\registro-colmeia\\backend\\ColmeiaApi\\ColmeiaApi.csproj",
-        "packagesPath": "C:\\Users\\Usuario\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Usuario\\Desktop\\ADS\\3 semestre\\IniciacaoCientifica\\registro-colmeia\\backend\\ColmeiaApi\\obj\\",
+        "projectPath": "C:\\Users\\natal\\Desktop\\ADS\\3_semestre\\IniciacaoCientifica\\registro-colmeia\\backend\\ColmeiaApi\\ColmeiaApi.csproj",
+        "packagesPath": "C:\\Users\\natal\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\natal\\Desktop\\ADS\\3_semestre\\IniciacaoCientifica\\registro-colmeia\\backend\\ColmeiaApi\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Usuario\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\natal\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
@@ -38,7 +38,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "10.0.100"
       },
       "frameworks": {
         "net8.0": {
@@ -53,6 +53,10 @@
             "Pomelo.EntityFrameworkCore.MySql": {
               "target": "Package",
               "version": "[8.0.2, )"
+            },
+            "Swashbuckle.AspNetCore": {
+              "target": "Package",
+              "version": "[10.1.7, )"
             }
           },
           "imports": [
@@ -66,6 +70,24 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.win-x64",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.AspNetCore.App": {
               "privateAssets": "none"
@@ -74,7 +96,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.103/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
