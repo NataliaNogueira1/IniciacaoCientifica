@@ -64,6 +64,33 @@ public class RegistrosController(ColmeiaContext db) : ControllerBase
             .Include(r => r.Leitura)
             .OrderByDescending(r => r.DataHora)
             .Take(50)
+            .Select(r => new
+            {
+                r.Id,
+                r.DataHora,
+                Saude = r.Saude == null ? null : new
+                {
+                    r.Saude.IdColmeia,
+                    r.Saude.PresencaRainha,
+                    r.Saude.PresencaPredador,
+                    r.Saude.TipoPredador,
+                    r.Saude.Comida,
+                    r.Saude.CondicaoClimatica,
+                    r.Saude.Saudavel,
+                    r.Saude.Observacoes
+                },
+                Leitura = r.Leitura == null ? null : new
+                {
+                    r.Leitura.IdSensor,
+                    r.Leitura.TemperaturaInterna,
+                    r.Leitura.TemperaturaExterna,
+                    r.Leitura.UmidadeInterna,
+                    r.Leitura.UmidadeExterna,
+                    r.Leitura.PressaoAtmosferica,
+                    r.Leitura.VelocidadeVento,
+                    r.Leitura.Peso
+                }
+            })
             .ToListAsync());
 
     private static bool TemDadosLeitura(RegistroDto dto) =>
