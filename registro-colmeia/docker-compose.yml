@@ -7,6 +7,8 @@ services:
       MARIADB_DATABASE: colmeia
       MARIADB_USER: colmeia_user
       MARIADB_PASSWORD: colmeia_pass
+    ports:
+      - "3306:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./banco/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -18,9 +20,13 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
+    ports:
+      - "5027:8080"
     environment:
       ConnectionStrings__Default: "Server=mariadb;Port=3306;Database=colmeia;User=colmeia_user;Password=colmeia_pass;"
       ASPNETCORE_ENVIRONMENT: Production
+      Logging__LogLevel__Default: "Information"
+      Logging__LogLevel__Microsoft.AspNetCore: "Information"
     depends_on:
       mariadb:
         condition: service_healthy

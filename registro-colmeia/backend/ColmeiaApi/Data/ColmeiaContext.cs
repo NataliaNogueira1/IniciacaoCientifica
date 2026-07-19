@@ -5,6 +5,7 @@ namespace ColmeiaApi.Data;
 
 public class ColmeiaContext(DbContextOptions<ColmeiaContext> options) : DbContext(options)
 {
+    public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Localizacao> Localizacoes => Set<Localizacao>();
     public DbSet<Colmeia> Colmeias => Set<Colmeia>();
     public DbSet<Sensor> Sensores => Set<Sensor>();
@@ -14,6 +15,27 @@ public class ColmeiaContext(DbContextOptions<ColmeiaContext> options) : DbContex
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Usuario>(e =>
+        {
+            e.ToTable("Usuario");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.Nome).HasColumnName("nome").HasMaxLength(100);
+            e.Property(x => x.Sobrenome).HasColumnName("sobrenome").HasMaxLength(100);
+            e.Property(x => x.Cpf).HasColumnName("cpf").HasMaxLength(14);
+            e.HasIndex(x => x.Cpf).IsUnique();
+            e.Property(x => x.Email).HasColumnName("email").HasMaxLength(200);
+            e.HasIndex(x => x.Email).IsUnique();
+            e.Property(x => x.SenhaHash).HasColumnName("senhaHash");
+            e.Property(x => x.DataNascimento).HasColumnName("dataNascimento");
+            e.Property(x => x.Instituicao).HasColumnName("instituicao").HasMaxLength(200);
+            e.Property(x => x.Permissao).HasColumnName("permissao")
+                .HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Ativo).HasColumnName("ativo");
+            e.Property(x => x.Emoji).HasColumnName("emoji").HasMaxLength(10);
+            e.Property(x => x.Criacao).HasColumnName("criacao");
+            e.Property(x => x.UltimoLogin).HasColumnName("ultimoLogin");
+        });
+
         modelBuilder.Entity<Localizacao>(e =>
         {
             e.ToTable("Localizacao");
@@ -50,7 +72,18 @@ public class ColmeiaContext(DbContextOptions<ColmeiaContext> options) : DbContex
         {
             e.ToTable("Registro");
             e.Property(x => x.Id).HasColumnName("id");
-            e.Property(x => x.DataHora).HasColumnName("dataHora");
+            e.Property(x => x.IdUsuario).HasColumnName("idUsuario");
+            e.Property(x => x.IdColmeia).HasColumnName("idColmeia");
+            e.Property(x => x.DataHora).HasColumnName("dataHoraObservacao");
+            e.Property(x => x.Criacao).HasColumnName("criacao");
+            e.Property(x => x.Atualizacao).HasColumnName("atualizacao");
+            e.Property(x => x.Exclusao).HasColumnName("exclusao");
+            e.HasOne(x => x.Usuario)
+                .WithMany(x => x.Registros)
+                .HasForeignKey(x => x.IdUsuario);
+            e.HasOne(x => x.Colmeia)
+                .WithMany()
+                .HasForeignKey(x => x.IdColmeia);
         });
 
         modelBuilder.Entity<Leitura>(e =>

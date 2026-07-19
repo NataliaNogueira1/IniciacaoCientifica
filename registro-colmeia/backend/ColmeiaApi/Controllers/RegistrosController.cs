@@ -1,6 +1,9 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using ColmeiaApi.Data;
 using ColmeiaApi.DTOs;
 using ColmeiaApi.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,16 +11,28 @@ namespace ColmeiaApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class RegistrosController(ColmeiaContext db) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] RegistroDto dto)
     {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub);
+
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
+            return Unauthorized(new { message = "Token inválido." });
+
         var colmeia = await db.Colmeias.FirstOrDefaultAsync(c => c.Nome == dto.Colmeia);
         if (colmeia is null)
             return NotFound(new { message = "Colmeia não encontrada" });
 
-        var registro = new Registro { DataHora = dto.DataHora };
+        var registro = new Registro
+        {
+            IdUsuario = usuarioId,
+            IdColmeia = colmeia.Id,
+            DataHora = dto.DataHora
+        };
         db.Registros.Add(registro);
 
         db.Saudes.Add(new Saude
@@ -92,6 +107,82 @@ public class RegistrosController(ColmeiaContext db) : ControllerBase
                 }
             })
             .ToListAsync());
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub);
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
+            return Unauthorized();
+
+        var registro = await db.Registros.FindAsync(id);
+        if (registro is null || registro.Exclusao is not null)
+            return NotFound(new { message = "Registro não encontrado." });
+
+        var isAdmin = User.IsInRole("Admin");
+        if (registro.IdUsuario != usuarioId && !isAdmin)
+            return Forbid();
+
+        registro.Exclusao = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Put(Guid id, [FromBody] RegistroDto dto)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub);
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
+            return Unauthorized();
+
+        var registro = await db.Registros
+            .Include(r => r.Saude)
+            .Include(r => r.Leitura)
+            .FirstOrDefaultAsync(r => r.Id == id && r.Exclusao == null);
+
+        if (registro is null)
+            return NotFound(new { message = "Registro não encontrado." });
+
+        var isAdmin = User.IsInRole("Admin");
+        if (registro.IdUsuario != usuarioId && !isAdmin)
+            return Forbid();
+
+        var colmeia = await db.Colmeias.FirstOrDefaultAsync(c => c.Nome == dto.Colmeia);
+        if (colmeia is null)
+            return NotFound(new { message = "Colmeia não encontrada." });
+
+        registro.IdColmeia = colmeia.Id;
+        registro.DataHora = dto.DataHora;
+        registro.Atualizacao = DateTime.UtcNow;
+
+        if (registro.Saude is not null)
+        {
+            registro.Saude.IdColmeia = colmeia.Id;
+            registro.Saude.PresencaRainha = dto.PresencaRainha;
+            registro.Saude.PresencaPredador = dto.PresencaPredador;
+            registro.Saude.TipoPredador = dto.PresencaPredador ? dto.TipoPredador : null;
+            registro.Saude.Comida = dto.Comida;
+            registro.Saude.CondicaoClimatica = dto.CondicaoClimatica;
+            registro.Saude.Saudavel = dto.Saudavel;
+            registro.Saude.Observacoes = dto.Observacoes;
+        }
+
+        if (registro.Leitura is not null)
+        {
+            registro.Leitura.TemperaturaInterna = dto.TemperaturaInterna;
+            registro.Leitura.TemperaturaExterna = dto.TemperaturaExterna;
+            registro.Leitura.UmidadeInterna = dto.UmidadeInterna;
+            registro.Leitura.UmidadeExterna = dto.UmidadeExterna;
+            registro.Leitura.PressaoAtmosferica = dto.PressaoAtmosferica;
+            registro.Leitura.VelocidadeVento = dto.VelocidadeVento;
+            registro.Leitura.Peso = dto.Peso;
+        }
+
+        await db.SaveChangesAsync();
+        return Ok(new { id = registro.Id });
+    }
 
     private static bool TemDadosLeitura(RegistroDto dto) =>
         dto.TemperaturaInterna.HasValue ||

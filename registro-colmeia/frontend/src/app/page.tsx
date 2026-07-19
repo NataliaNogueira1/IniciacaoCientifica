@@ -1,11 +1,14 @@
 ﻿"use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import InputText from "@/app/components/InputText";
 import SelectField from "@/app/components/SelectField";
 import Button from "@/app/components/Button";
 import BeeButton from "@/app/components/BeeButton";
 import BeeIcon from "@/app/components/BeeIcon";
+import { useAuth, clearAuthUser } from "@/app/hooks/useAuth";
+import UserCard from "@/app/components/UserCard";
 
 const COLMEIAS: Record<
   string,
@@ -136,6 +139,8 @@ function launchBees(rects: DOMRect[], onDone: () => void) {
 }
 
 export default function Home() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [form, setForm]               = useState<FormData>(initialForm);
   const [saving, setSaving]           = useState(false);
   const [beesFlying, setBeesFlying]   = useState(false);
@@ -143,6 +148,13 @@ export default function Home() {
   const [error, setError]             = useState<string | null>(null);
   const [localizacao, setLocalizacao] = useState<(typeof COLMEIAS)[string] | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Redireciona para login se não autenticado
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [authLoading, user, router]);
 
   useEffect(() => {
     setLocalizacao(form.colmeia ? (COLMEIAS[form.colmeia] ?? null) : null);
@@ -188,9 +200,13 @@ export default function Home() {
       setSaving(true);
       setError(null);
       try {
+        const token = user?.token ?? "";
         const res = await fetch("/api/registros", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
           body: JSON.stringify({
             colmeia: form.colmeia,
             dataHora: new Date(form.dataHora).toISOString(),
@@ -212,6 +228,11 @@ export default function Home() {
           }),
         });
         if (!res.ok) {
+          if (res.status === 401) {
+            clearAuthUser();
+            router.replace("/login");
+            return;
+          }
           const data = (await res.json().catch(() => null)) as { message?: string } | null;
           throw new Error(data?.message ?? "Erro ao salvar registro");
         }
@@ -236,11 +257,25 @@ export default function Home() {
     setLocalizacao(null);
   }
 
+  // Enquanto verifica autenticação, não renderiza nada para evitar flash
+  if (authLoading || !user) return null;
+
+  function handleLogout() {
+    clearAuthUser();
+    router.replace("/login");
+  }
+
   return (
     <main
-      className="min-h-screen flex items-center justify-center px-4 py-10"
+      className="min-h-screen flex flex-col items-center justify-start px-4 py-10 gap-4 sm:gap-6"
       aria-label="Pagina de registro da colmeia"
     >
+      {/* Card do usuário — aparece em cima no mobile, canto superior direito no desktop */}
+      <div className="w-full max-w-2xl flex justify-end sm:fixed sm:top-6 sm:right-6 sm:w-auto sm:z-50">
+        <UserCard user={user} onLogout={handleLogout} />
+      </div>
+
+      {/* Formulário principal — sempre centralizado */}
       <div
         className="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden"
         role="region"
