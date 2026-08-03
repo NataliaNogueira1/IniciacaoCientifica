@@ -40,12 +40,12 @@ const AVATAR_PALETTE: Record<string, { bg: string; fg: string }> = {
 
 const DEFAULT_PALETTE = { bg: "#fbbf24", fg: "#78350f" };
 
-const SIZE_PX = { sm: 48, md: 56, lg: 64 };
-const ICON_SIZE = { sm: 22, md: 26, lg: 30 };
+const SIZE_PX = { xs: 36, sm: 48, md: 56, lg: 64 };
+const ICON_SIZE = { xs: 16, sm: 22, md: 26, lg: 30 };
 
 interface IconAvatarProps {
   icon?: string | null;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   className?: string;
   rounded?: "full" | "xl";
 }

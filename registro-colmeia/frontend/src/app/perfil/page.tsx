@@ -6,7 +6,7 @@ import InputText from "@/app/components/InputText";
 import Button from "@/app/components/Button";
 import BeeIcon from "@/app/components/BeeIcon";
 import IconPickerField, { DEFAULT_ICON } from "@/app/components/IconPickerField";
-import { useAuth, saveAuthUser } from "@/app/hooks/useAuth";
+import { useAuth, saveAuthUser, clearAuthUser } from "@/app/hooks/useAuth";
 import { ArrowLeft } from "lucide-react";
 
 const DEFAULT_EMOJI = DEFAULT_ICON;
@@ -70,13 +70,26 @@ export default function PerfilPage() {
     fetch("/api/perfil", {
       headers: { Authorization: `Bearer ${user.token}` },
     })
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (r.status === 401) {
+          clearAuthUser();
+          router.replace("/login");
+          return Promise.reject(new Error("Sessão expirada. Faça login novamente."));
+        }
+        if (!r.ok) {
+          const msg = await r.text().catch(() => "");
+          throw new Error(`HTTP ${r.status}${msg ? ": " + msg : ""}`);
+        }
+        return r.json();
+      })
       .then((data: PerfilData) => {
         setForm({
           nome: data.nome,
           sobrenome: data.sobrenome,
           email: data.email,
-          dataNascimento: data.dataNascimento,
+          dataNascimento: data.dataNascimento
+            ? data.dataNascimento.slice(0, 10)
+            : "",
           instituicao: data.instituicao ?? "",
           emoji: data.emoji ?? DEFAULT_EMOJI,
           senhaAtual: "",
@@ -86,7 +99,10 @@ export default function PerfilPage() {
         setCpf(data.cpf);
         setPermissao(data.permissao);
       })
-      .catch(() => setError("Erro ao carregar dados do perfil."))
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(`Erro ao carregar dados do perfil. (${msg})`);
+      })
       .finally(() => setLoading(false));
   }, [user]);
 
@@ -160,36 +176,39 @@ export default function PerfilPage() {
       className="min-h-screen flex items-center justify-center px-4 py-10"
       aria-label="Página de edição de perfil"
     >
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
-        {/* Header */}
-        <div className="bg-yellow-950 px-6 py-7 flex items-start gap-4">
-          <div className="-mt-1">
-            <BeeIcon size="1.6rem" />
-          </div>
-          <div className="flex flex-col gap-1 flex-1">
-            <h1 className="text-xl font-bold text-yellow-300 leading-tight">
-              Meu Perfil
-            </h1>
-            <p className="text-sm text-yellow-300">
-              Edite suas informações pessoais
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="flex items-center gap-1 text-yellow-400 hover:text-yellow-200 text-sm transition-colors shrink-0"
-          >
-            <ArrowLeft size={15} strokeWidth={2} />
-            Voltar
-          </button>
-        </div>
+      {/* Botão voltar — fixo no canto superior esquerdo, mesmo nível do menu */}
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="fixed top-8 right-4 sm:right-16 z-50 flex items-center gap-2 bg-yellow-950 text-yellow-300 hover:bg-yellow-900 transition-colors px-4 py-2 rounded-full shadow-md text-sm font-semibold"
+      >
+        <ArrowLeft size={15} strokeWidth={2} />
+        Voltar
+      </button>
 
-        <form
-          onSubmit={handleSubmit}
-          noValidate
-          className="px-6 py-8 flex flex-col gap-5"
-          aria-label="Formulário de edição de perfil"
-        >
+      <div className="max-w-2xl w-full mt-16 sm:mt-0">
+        <div className="w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-yellow-950 px-6 py-7 flex items-start gap-4">
+            <div className="-mt-1">
+              <BeeIcon size="1.6rem" />
+            </div>
+            <div className="flex flex-col gap-1 flex-1">
+              <h1 className="text-xl font-bold text-yellow-300 leading-tight">
+                Meu Perfil
+              </h1>
+              <p className="text-sm text-yellow-300">
+                Edite suas informações pessoais
+              </p>
+            </div>
+          </div>
+
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="px-6 py-8 flex flex-col gap-5"
+            aria-label="Formulário de edição de perfil"
+          >
           {/* Emoji picker */}
           <div className="flex justify-center">
             <IconPickerField
@@ -204,7 +223,7 @@ export default function PerfilPage() {
               CPF
             </label>
             <input
-              value={cpf}
+              value={cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")}
               readOnly
               className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-400 bg-gray-50 cursor-not-allowed"
               aria-label="CPF não editável"
@@ -257,6 +276,7 @@ export default function PerfilPage() {
             required
             value={form.dataNascimento}
             onChange={handleChange}
+            max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14); return d.toISOString().slice(0, 10); })()}
           />
 
           <InputText
@@ -277,6 +297,7 @@ export default function PerfilPage() {
             label="Senha atual"
             id="senhaAtual"
             type="password"
+            showToggle
             placeholder="Digite sua senha atual"
             value={form.senhaAtual}
             onChange={handleChange}
@@ -328,7 +349,8 @@ export default function PerfilPage() {
             loading={saving}
             className="w-full"
           />
-        </form>
+          </form>
+        </div>
       </div>
     </main>
   );

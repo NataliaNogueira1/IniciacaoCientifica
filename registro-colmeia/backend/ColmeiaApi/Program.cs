@@ -33,7 +33,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        // Garante que DateTime UTC seja serializado com 'Z', para o frontend interpretar corretamente
+        opts.JsonSerializerOptions.Converters.Add(new ColmeiaApi.Converters.UtcDateTimeConverter());
+        opts.JsonSerializerOptions.Converters.Add(new ColmeiaApi.Converters.UtcNullableDateTimeConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {

@@ -87,7 +87,7 @@ export default function UserCard({ user, onLogout }: UserCardProps) {
           aria-haspopup="true"
           aria-label={`Menu do usuário ${user.nome}`}
         >
-          <IconAvatar icon={user.emoji} size="sm" className="ring-2 ring-yellow-800" />
+          <IconAvatar icon={user.emoji} size="xs" className="ring-2 ring-yellow-800" />
         </button>
 
         {open && (

@@ -2,10 +2,15 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { getAuthUser, type AuthUser } from "@/app/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { getAuthUser, clearAuthUser, type AuthUser } from "@/app/hooks/useAuth";
+import TopBar from "@/app/components/TopBar";
+import BeeIcon from "@/app/components/BeeIcon";
+import { LogIn, House, BarChart2 } from "lucide-react";
+import Toast, { useToast } from "@/app/components/Toast";
+import { ConfirmDialog, useConfirm } from "@/app/components/ConfirmDialog";
 
 const Charts = dynamic(() => import("@/app/dados/Charts"), { ssr: false });
-const DadosHeader = dynamic(() => import("@/app/dados/DadosHeader"), { ssr: false });
 const EditModal = dynamic(() => import("@/app/dados/EditModal"), { ssr: false });
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -139,6 +144,8 @@ export default function DadosPage() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [editando, setEditando] = useState<Registro | null>(null);
   const [selecionado, setSelecionado] = useState<Registro | null>(null);
+  const { toasts, removeToast, toast } = useToast();
+  const { confirmState, onClose: closeConfirm, confirm } = useConfirm();
   const PAGE_SIZE = 100;
 
   useEffect(() => { setAuthUser(getAuthUser()); }, []);
@@ -189,23 +196,114 @@ export default function DadosPage() {
   useEffect(() => { fetchRegistros(1); }, [fetchRegistros]);
 
   async function handleDelete(id: string) {
-    if (!authUser || !confirm("Tem certeza que deseja excluir este registro?")) return;
+    if (!authUser) return;
+    const ok = await confirm({
+      message: authUser.permissao === "Admin"
+        ? "Tem certeza que deseja excluir este registro?"
+        : "Deseja enviar uma solicitação de exclusão para aprovação do administrador?",
+      confirmLabel: authUser.permissao === "Admin" ? "Excluir" : "Enviar solicitação",
+      variant: authUser.permissao === "Admin" ? "danger" : "warning",
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/registros/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${authUser.token}` },
       });
-      if (res.ok || res.status === 204) fetchRegistros(page);
-      else alert("Não foi possível excluir este registro.");
+      if (res.status === 204) {
+        fetchRegistros(page);
+      } else if (res.ok) {
+        const d = await res.json().catch(() => null) as { message?: string } | null;
+        if (d?.message) toast.success(d.message);
+        fetchRegistros(page);
+      } else {
+        toast.error("Não foi possível processar esta ação.");
+      }
     } catch {
-      alert("Erro ao excluir registro.");
+      toast.error("Erro ao processar solicitação.");
     }
   }
 
   return (
-    <main className="min-h-screen bg-amber-50 px-4 py-8">
-      <div className="max-w-7xl mx-auto">
-        <DadosHeader />
+    <main className={`min-h-screen px-4 py-8 ${!authUser ? "bg-amber-50" : ""}`}>
+      <Toast toasts={toasts} onRemove={removeToast} />
+      <ConfirmDialog state={confirmState} onClose={closeConfirm} />
+      {/* TopBar — logado */}
+      {authUser && (
+        <div className="sm:contents">
+          <TopBar
+            user={authUser}
+            active="dados"
+            onLogout={() => { clearAuthUser(); setAuthUser(null); }}
+          />
+        </div>
+      )}
+
+      {/* Menu público — visitante não logado */}
+      {!authUser && (
+        <>
+          {/* Desktop: pill flutuante */}
+          <div
+            className="hidden sm:flex fixed top-6 right-16 z-50 items-center"
+            role="navigation"
+            aria-label="Navegação pública"
+          >
+            <div className="flex items-center bg-yellow-950 border-2 border-yellow-800 rounded-full px-2.5 py-2 gap-1.5 shadow-md">
+              <a href="/" aria-label="Início" className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
+                <House size={17} strokeWidth={2} />
+              </a>
+              <a href="/dados" aria-label="Dados" className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-400 text-yellow-950 shadow-inner scale-110 transition-all duration-200">
+                <BarChart2 size={17} strokeWidth={2} />
+              </a>
+              <a href="/login?redirect=/dados" aria-label="Entrar" className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
+                <LogIn size={17} strokeWidth={2} />
+              </a>
+            </div>
+          </div>
+
+          {/* Mobile: barra no topo */}
+          <div className="sm:hidden w-full bg-yellow-950 rounded-2xl shadow-xl px-4 py-3 flex items-center justify-between mb-4" role="navigation" aria-label="Navegação pública">
+            <div className="flex items-center gap-1">
+              <a href="/" aria-label="Início" className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
+                <House size={17} strokeWidth={2} />
+              </a>
+              <a href="/dados" aria-label="Dados" className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-400 text-yellow-950 shadow-inner transition-all duration-200">
+                <BarChart2 size={17} strokeWidth={2} />
+              </a>
+            </div>
+            <a
+              href="/login?redirect=/dados"
+              className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200"
+              aria-label="Entrar"
+            >
+              <LogIn size={17} strokeWidth={2} />
+            </a>
+          </div>
+        </>
+      )}
+      <div className={`max-w-7xl mx-auto mt-4 sm:mt-0 ${authUser ? "sm:pt-24" : "sm:pt-24"}`}>
+        {/* Título da página */}
+        {authUser ? (
+          <div className="w-full bg-yellow-950 rounded-2xl shadow-xl px-6 py-7 flex items-start gap-4 mb-6">
+            <div className="-mt-1">
+              <BeeIcon size="1.6rem" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h1 className="text-xl font-bold text-yellow-300 leading-tight">Dados das Colmeias</h1>
+              <p className="text-sm text-yellow-300">Registros públicos de monitoramento</p>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full bg-yellow-950 rounded-2xl shadow-xl px-6 py-7 flex items-start gap-4 mb-6">
+            <div className="-mt-1">
+              <BeeIcon size="1.6rem" />
+            </div>
+            <div className="flex flex-col gap-1 flex-1">
+              <h1 className="text-xl font-bold text-yellow-300 leading-tight">Dados das Colmeias</h1>
+              <p className="text-sm text-yellow-300">Registros públicos de monitoramento</p>
+            </div>
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="bg-white rounded-2xl shadow p-4 mb-6 flex flex-wrap gap-3 items-end">
@@ -257,7 +355,7 @@ export default function DadosPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-4">
+        <div className="flex flex-wrap gap-1 mb-4">
           {(["tabela", "dashboards", "correlacao"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -266,7 +364,7 @@ export default function DadosPage() {
               {t === "tabela" ? "Tabela" : t === "dashboards" ? "Dashboards" : "Correlação"}
             </button>
           ))}
-          <span className="ml-auto">
+          <span className="w-full sm:w-auto sm:ml-auto flex sm:block justify-end">
             <span className="inline-flex items-center gap-1.5 bg-yellow-950 text-yellow-300 text-xs font-semibold px-3 py-1.5 rounded-full">
               {total.toLocaleString("pt-BR")} registro{total !== 1 ? "s" : ""}
             </span>
@@ -289,13 +387,13 @@ export default function DadosPage() {
                   onClick={() => { setEditando(selecionado); setSelecionado(null); }}
                   className="text-xs px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-500 text-yellow-950 font-semibold transition-colors"
                 >
-                  Editar
+                  {authUser.permissao === "Admin" ? "Editar" : "Solicitar Edição"}
                 </button>
                 <button
                   onClick={() => handleDelete(selecionado.id)}
                   className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 font-semibold transition-colors"
                 >
-                  Excluir
+                  {authUser.permissao === "Admin" ? "Excluir" : "Solicitar Exclusão"}
                 </button>
                 <button
                   onClick={() => setSelecionado(null)}
@@ -393,6 +491,7 @@ export default function DadosPage() {
         <EditModal
           registro={editando}
           token={authUser.token}
+          isAdmin={authUser.permissao === "Admin"}
           onClose={() => setEditando(null)}
           onSaved={() => { setEditando(null); fetchRegistros(page); }}
         />

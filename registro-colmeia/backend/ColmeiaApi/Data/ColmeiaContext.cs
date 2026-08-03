@@ -12,6 +12,7 @@ public class ColmeiaContext(DbContextOptions<ColmeiaContext> options) : DbContex
     public DbSet<Registro> Registros => Set<Registro>();
     public DbSet<Leitura> Leituras => Set<Leitura>();
     public DbSet<Saude> Saudes => Set<Saude>();
+    public DbSet<SolicitacaoAlteracao> SolicitacoesAlteracao => Set<SolicitacaoAlteracao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,7 +23,7 @@ public class ColmeiaContext(DbContextOptions<ColmeiaContext> options) : DbContex
             e.Property(x => x.Nome).HasColumnName("nome").HasMaxLength(100);
             e.Property(x => x.Sobrenome).HasColumnName("sobrenome").HasMaxLength(100);
             e.Property(x => x.Cpf).HasColumnName("cpf").HasMaxLength(14);
-            e.HasIndex(x => x.Cpf).IsUnique();
+            e.HasIndex(x => x.Cpf);
             e.Property(x => x.Email).HasColumnName("email").HasMaxLength(200);
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.SenhaHash).HasColumnName("senhaHash");
@@ -31,6 +32,7 @@ public class ColmeiaContext(DbContextOptions<ColmeiaContext> options) : DbContex
             e.Property(x => x.Permissao).HasColumnName("permissao")
                 .HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Ativo).HasColumnName("ativo");
+            e.Property(x => x.Aprovado).HasColumnName("aprovado");
             e.Property(x => x.Emoji).HasColumnName("emoji").HasMaxLength(10);
             e.Property(x => x.Criacao).HasColumnName("criacao");
             e.Property(x => x.UltimoLogin).HasColumnName("ultimoLogin");
@@ -126,6 +128,31 @@ public class ColmeiaContext(DbContextOptions<ColmeiaContext> options) : DbContex
             e.HasOne(x => x.Colmeia)
                 .WithMany(x => x.Saudes)
                 .HasForeignKey(x => x.IdColmeia);
+        });
+
+        modelBuilder.Entity<SolicitacaoAlteracao>(e =>
+        {
+            e.ToTable("SolicitacaoAlteracao");
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.IdRegistro).HasColumnName("idRegistro");
+            e.Property(x => x.IdUsuario).HasColumnName("idUsuario");
+            e.Property(x => x.Tipo).HasColumnName("tipo")
+                .HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.Status).HasColumnName("status")
+                .HasConversion<string>().HasMaxLength(15);
+            e.Property(x => x.DadosNovos).HasColumnName("dadosNovos").HasColumnType("text");
+            e.Property(x => x.MotivoRejeicao).HasColumnName("motivoRejeicao").HasMaxLength(500);
+            e.Property(x => x.Criacao).HasColumnName("criacao");
+            e.Property(x => x.Resolucao).HasColumnName("resolucao");
+            e.Property(x => x.IdAdminResolveu).HasColumnName("idAdminResolveu");
+            e.HasOne(x => x.Registro)
+                .WithMany()
+                .HasForeignKey(x => x.IdRegistro)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Usuario)
+                .WithMany()
+                .HasForeignKey(x => x.IdUsuario)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

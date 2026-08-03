@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ColmeiaApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+092724843ce66f59416dbc5fa49e6ec1b0de55f0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7c77328687872158886c7b4cfe59aa56164e529a")]
 [assembly: System.Reflection.AssemblyProductAttribute("ColmeiaApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ColmeiaApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

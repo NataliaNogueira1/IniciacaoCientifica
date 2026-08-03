@@ -1,6 +1,24 @@
 ```mermaid
 erDiagram
 
+    Usuario {
+        UUID id PK
+        string nome
+        string sobrenome
+        string cpf
+        string email UK
+        string senhaHash
+        date dataNascimento
+        string instituicao
+        enum permissao
+        boolean ativo
+        boolean aprovado
+        boolean reprovado
+        string emoji
+        datetime criacao
+        datetime ultimoLogin
+    }
+
     Localizacao {
         UUID id PK
         string cidade
@@ -23,11 +41,16 @@ erDiagram
 
     Registro {
         UUID id PK
-        datetime dataHora
+        UUID idUsuario FK
+        UUID idColmeia FK
+        datetime dataHoraObservacao
+        datetime criacao
+        datetime atualizacao
+        datetime exclusao
     }
 
     Leitura {
-        UUID idRegistro PK "FK"
+        UUID idRegistro PK
         UUID idSensor FK
         decimal temperaturaInterna
         decimal temperaturaExterna
@@ -39,7 +62,7 @@ erDiagram
     }
 
     Saude {
-        UUID idRegistro PK "FK"
+        UUID idRegistro PK
         UUID idColmeia FK
         boolean presencaRainha
         boolean presencaPredador
@@ -47,14 +70,30 @@ erDiagram
         enum comida
         enum condicaoClimatica
         boolean saudavel
-        string observacoes
+        text observacoes
+    }
+
+    SolicitacaoAlteracao {
+        UUID id PK
+        UUID idRegistro FK
+        UUID idUsuario FK
+        UUID idAdminResolveu
+        enum tipo
+        enum status
+        text dadosNovos
+        string motivoRejeicao
+        datetime criacao
+        datetime resolucao
     }
 
     Localizacao ||--|{ Colmeia : "1:N"
     Colmeia ||--|{ Sensor : "1:N"
-    Sensor ||--|{ Leitura : "1:N"
-    Colmeia ||--|{ Saude : "1:N"
-    Registro ||--|| Leitura : possui
-    Registro ||--|| Saude : possui
-
+    Usuario ||--o{ Registro : "1:N"
+    Colmeia ||--o{ Registro : "1:N"
+    Registro ||--o| Leitura : "1:0..1"
+    Registro ||--|| Saude : "1:1"
+    Sensor ||--o{ Leitura : "1:N"
+    Colmeia ||--o{ Saude : "1:N"
+    Registro ||--o{ SolicitacaoAlteracao : "1:N"
+    Usuario ||--o{ SolicitacaoAlteracao : "1:N"
 ```

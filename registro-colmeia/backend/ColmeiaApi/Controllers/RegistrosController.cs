@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json;
 using ColmeiaApi.Data;
 using ColmeiaApi.DTOs;
 using ColmeiaApi.Models;
@@ -14,14 +15,29 @@ namespace ColmeiaApi.Controllers;
 [Authorize]
 public class RegistrosController(ColmeiaContext db) : ControllerBase
 {
+    private (Guid? id, bool isAdmin, bool isAprovado) GetUserInfo()
+    {
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub);
+        var id = Guid.TryParse(claim?.Value, out var parsed) ? parsed : (Guid?)null;
+        var isAdmin = User.IsInRole("Admin");
+        // Admins are always approved
+        var isAprovado = isAdmin || (db.Usuarios.Find(id)?.Aprovado ?? false);
+        return (id, isAdmin, isAprovado);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] RegistroDto dto)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
-            ?? User.FindFirst(JwtRegisteredClaimNames.Sub);
-
-        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
+        var (usuarioId, isAdmin, _) = GetUserInfo();
+        if (usuarioId is null)
             return Unauthorized(new { message = "Token inválido." });
+
+        // Verifica se usuário está aprovado
+        var usuario = await db.Usuarios.FindAsync(usuarioId);
+        if (usuario is null) return Unauthorized();
+        if (!isAdmin && !usuario.Aprovado)
+            return Forbid();
 
         var colmeia = await db.Colmeias.FirstOrDefaultAsync(c => c.Nome == dto.Colmeia);
         if (colmeia is null)
@@ -29,7 +45,7 @@ public class RegistrosController(ColmeiaContext db) : ControllerBase
 
         var registro = new Registro
         {
-            IdUsuario = usuarioId,
+            IdUsuario = usuarioId.Value,
             IdColmeia = colmeia.Id,
             DataHora = dto.DataHora
         };
@@ -111,31 +127,47 @@ public class RegistrosController(ColmeiaContext db) : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
-            ?? User.FindFirst(JwtRegisteredClaimNames.Sub);
-        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
-            return Unauthorized();
+        var (usuarioId, isAdmin, _) = GetUserInfo();
+        if (usuarioId is null) return Unauthorized();
 
         var registro = await db.Registros.FindAsync(id);
         if (registro is null || registro.Exclusao is not null)
             return NotFound(new { message = "Registro não encontrado." });
 
-        var isAdmin = User.IsInRole("Admin");
-        if (registro.IdUsuario != usuarioId && !isAdmin)
-            return Forbid();
+        // Admin age direto
+        if (isAdmin)
+        {
+            registro.Exclusao = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            return NoContent();
+        }
 
-        registro.Exclusao = DateTime.UtcNow;
+        // Pesquisador cria solicitação de exclusão
+        var jaExiste = await db.SolicitacoesAlteracao.AnyAsync(s =>
+            s.IdRegistro == id &&
+            s.IdUsuario == usuarioId &&
+            s.Tipo == TipoSolicitacao.Excluir &&
+            s.Status == StatusSolicitacao.Pendente);
+
+        if (jaExiste)
+            return Conflict(new { message = "Já existe uma solicitação de exclusão pendente para este registro." });
+
+        db.SolicitacoesAlteracao.Add(new SolicitacaoAlteracao
+        {
+            IdRegistro = id,
+            IdUsuario = usuarioId.Value,
+            Tipo = TipoSolicitacao.Excluir,
+        });
+
         await db.SaveChangesAsync();
-        return NoContent();
+        return Ok(new { message = "Solicitação de exclusão enviada para aprovação do administrador." });
     }
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Put(Guid id, [FromBody] RegistroDto dto)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
-            ?? User.FindFirst(JwtRegisteredClaimNames.Sub);
-        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
-            return Unauthorized();
+        var (usuarioId, isAdmin, _) = GetUserInfo();
+        if (usuarioId is null) return Unauthorized();
 
         var registro = await db.Registros
             .Include(r => r.Saude)
@@ -145,43 +177,66 @@ public class RegistrosController(ColmeiaContext db) : ControllerBase
         if (registro is null)
             return NotFound(new { message = "Registro não encontrado." });
 
-        var isAdmin = User.IsInRole("Admin");
-        if (registro.IdUsuario != usuarioId && !isAdmin)
-            return Forbid();
-
         var colmeia = await db.Colmeias.FirstOrDefaultAsync(c => c.Nome == dto.Colmeia);
         if (colmeia is null)
             return NotFound(new { message = "Colmeia não encontrada." });
 
-        registro.IdColmeia = colmeia.Id;
-        registro.DataHora = dto.DataHora;
-        registro.Atualizacao = DateTime.UtcNow;
-
-        if (registro.Saude is not null)
+        // Admin age direto
+        if (isAdmin)
         {
-            registro.Saude.IdColmeia = colmeia.Id;
-            registro.Saude.PresencaRainha = dto.PresencaRainha;
-            registro.Saude.PresencaPredador = dto.PresencaPredador;
-            registro.Saude.TipoPredador = dto.PresencaPredador ? dto.TipoPredador : null;
-            registro.Saude.Comida = dto.Comida;
-            registro.Saude.CondicaoClimatica = dto.CondicaoClimatica;
-            registro.Saude.Saudavel = dto.Saudavel;
-            registro.Saude.Observacoes = dto.Observacoes;
+            registro.IdColmeia = colmeia.Id;
+            registro.DataHora = dto.DataHora;
+            registro.Atualizacao = DateTime.UtcNow;
+
+            if (registro.Saude is not null)
+            {
+                registro.Saude.IdColmeia = colmeia.Id;
+                registro.Saude.PresencaRainha = dto.PresencaRainha;
+                registro.Saude.PresencaPredador = dto.PresencaPredador;
+                registro.Saude.TipoPredador = dto.PresencaPredador ? dto.TipoPredador : null;
+                registro.Saude.Comida = dto.Comida;
+                registro.Saude.CondicaoClimatica = dto.CondicaoClimatica;
+                registro.Saude.Saudavel = dto.Saudavel;
+                registro.Saude.Observacoes = dto.Observacoes;
+            }
+
+            if (registro.Leitura is not null)
+            {
+                registro.Leitura.TemperaturaInterna = dto.TemperaturaInterna;
+                registro.Leitura.TemperaturaExterna = dto.TemperaturaExterna;
+                registro.Leitura.UmidadeInterna = dto.UmidadeInterna;
+                registro.Leitura.UmidadeExterna = dto.UmidadeExterna;
+                registro.Leitura.PressaoAtmosferica = dto.PressaoAtmosferica;
+                registro.Leitura.VelocidadeVento = dto.VelocidadeVento;
+                registro.Leitura.Peso = dto.Peso;
+            }
+
+            await db.SaveChangesAsync();
+            return Ok(new { id = registro.Id });
         }
 
-        if (registro.Leitura is not null)
+        // Pesquisador cria solicitação de edição
+        var jaExiste = await db.SolicitacoesAlteracao.AnyAsync(s =>
+            s.IdRegistro == id &&
+            s.IdUsuario == usuarioId &&
+            s.Tipo == TipoSolicitacao.Editar &&
+            s.Status == StatusSolicitacao.Pendente);
+
+        if (jaExiste)
+            return Conflict(new { message = "Já existe uma solicitação de edição pendente para este registro." });
+
+        var dadosJson = JsonSerializer.Serialize(dto);
+
+        db.SolicitacoesAlteracao.Add(new SolicitacaoAlteracao
         {
-            registro.Leitura.TemperaturaInterna = dto.TemperaturaInterna;
-            registro.Leitura.TemperaturaExterna = dto.TemperaturaExterna;
-            registro.Leitura.UmidadeInterna = dto.UmidadeInterna;
-            registro.Leitura.UmidadeExterna = dto.UmidadeExterna;
-            registro.Leitura.PressaoAtmosferica = dto.PressaoAtmosferica;
-            registro.Leitura.VelocidadeVento = dto.VelocidadeVento;
-            registro.Leitura.Peso = dto.Peso;
-        }
+            IdRegistro = id,
+            IdUsuario = usuarioId.Value,
+            Tipo = TipoSolicitacao.Editar,
+            DadosNovos = dadosJson,
+        });
 
         await db.SaveChangesAsync();
-        return Ok(new { id = registro.Id });
+        return Ok(new { message = "Solicitação de edição enviada para aprovação do administrador." });
     }
 
     private static bool TemDadosLeitura(RegistroDto dto) =>

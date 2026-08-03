@@ -7,7 +7,6 @@ using ColmeiaApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-
 namespace ColmeiaApi.Controllers;
 
 [ApiController]
@@ -20,7 +19,7 @@ public class AuthController(ColmeiaContext db, IConfiguration config) : Controll
         if (await db.Usuarios.AnyAsync(u => u.Email == dto.Email))
             return Conflict(new { message = "E-mail já cadastrado." });
 
-        if (await db.Usuarios.AnyAsync(u => u.Cpf == dto.Cpf))
+        if (await db.Usuarios.AnyAsync(u => u.Cpf == dto.Cpf && u.Ativo))
             return Conflict(new { message = "CPF já cadastrado." });
 
         var usuario = new Usuario
@@ -50,6 +49,9 @@ public class AuthController(ColmeiaContext db, IConfiguration config) : Controll
 
         if (!usuario.Ativo)
             return Unauthorized(new { message = "Conta desativada. Entre em contato com o administrador." });
+
+        if (!usuario.Aprovado && usuario.Permissao != Permissao.Admin)
+            return Unauthorized(new { message = "Conta ainda não aprovada. Aguarde a aprovação de um administrador." });
 
         usuario.UltimoLogin = DateTime.UtcNow;
         await db.SaveChangesAsync();

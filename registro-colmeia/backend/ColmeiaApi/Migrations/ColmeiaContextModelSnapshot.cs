@@ -245,12 +245,73 @@ namespace ColmeiaApi.Migrations
                     b.ToTable("Sensor", (string)null);
                 });
 
+            modelBuilder.Entity("ColmeiaApi.Models.SolicitacaoAlteracao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("Criacao")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("criacao");
+
+                    b.Property<string>("DadosNovos")
+                        .HasColumnType("text")
+                        .HasColumnName("dadosNovos");
+
+                    b.Property<Guid?>("IdAdminResolveu")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("idAdminResolveu");
+
+                    b.Property<Guid>("IdRegistro")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("idRegistro");
+
+                    b.Property<Guid>("IdUsuario")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("idUsuario");
+
+                    b.Property<string>("MotivoRejeicao")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("motivoRejeicao");
+
+                    b.Property<DateTime?>("Resolucao")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("resolucao");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("varchar(15)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("tipo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdRegistro");
+
+                    b.HasIndex("IdUsuario");
+
+                    b.ToTable("SolicitacaoAlteracao", (string)null);
+                });
+
             modelBuilder.Entity("ColmeiaApi.Models.Usuario", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)")
                         .HasColumnName("id");
+
+                    b.Property<bool>("Aprovado")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("aprovado");
 
                     b.Property<bool>("Ativo")
                         .HasColumnType("tinyint(1)")
@@ -298,6 +359,9 @@ namespace ColmeiaApi.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)")
                         .HasColumnName("permissao");
+
+                    b.Property<bool>("Reprovado")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("SenhaHash")
                         .IsRequired()
@@ -402,6 +466,25 @@ namespace ColmeiaApi.Migrations
                         .IsRequired();
 
                     b.Navigation("Colmeia");
+                });
+
+            modelBuilder.Entity("ColmeiaApi.Models.SolicitacaoAlteracao", b =>
+                {
+                    b.HasOne("ColmeiaApi.Models.Registro", "Registro")
+                        .WithMany()
+                        .HasForeignKey("IdRegistro")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ColmeiaApi.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("IdUsuario")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Registro");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("ColmeiaApi.Models.Colmeia", b =>

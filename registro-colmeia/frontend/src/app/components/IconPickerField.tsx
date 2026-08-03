@@ -77,7 +77,7 @@ export default function IconPickerField({ value, onChange }: IconPickerFieldProp
         >
           <IconComponent name={safeValue} size={38} color={current.fg} />
         </button>
-        <span className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-full w-6 h-6 flex items-center justify-center shadow pointer-events-none">
+        <span className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-full w-6 h-6 flex items-center justify-center shadow cursor-pointer" onClick={() => setOpen((v) => !v)}>
           <Pencil size={12} strokeWidth={2} className="text-gray-500" />
         </span>
       </div>

@@ -18,6 +18,8 @@ public class Usuario
     public string Instituicao { get; set; } = "";
     public Permissao Permissao { get; set; } = Permissao.Pesquisador;
     public bool Ativo { get; set; } = true;
+    public bool Aprovado { get; set; } = false;
+    public bool Reprovado { get; set; } = false;
     public string? Emoji { get; set; }
     public DateTime Criacao { get; set; } = DateTime.UtcNow;
     public DateTime? UltimoLogin { get; set; }

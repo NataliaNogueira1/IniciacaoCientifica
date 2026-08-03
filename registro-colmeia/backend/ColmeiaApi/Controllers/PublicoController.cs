@@ -96,7 +96,14 @@ public class PublicoController(ColmeiaContext db) : ControllerBase
         Ok(await db.Colmeias
             .Include(c => c.Localizacao)
             .OrderBy(c => c.Nome)
-            .Select(c => new { c.Nome, Cidade = c.Localizacao.Cidade })
+            .Select(c => new
+            {
+                c.Nome,
+                Cidade    = c.Localizacao.Cidade,
+                Latitude  = c.Localizacao.Latitude,
+                Longitude = c.Localizacao.Longitude,
+                Altitude  = c.Localizacao.Altitude,
+            })
             .ToListAsync());
 
     [HttpGet("periodo")]
