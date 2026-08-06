@@ -20,7 +20,7 @@ namespace ColmeiaApi.Migrations
             migrationBuilder.Sql(@"
                 CREATE TABLE IF NOT EXISTS `SolicitacaoAlteracao` (
                     `id`               char(36)         NOT NULL COLLATE ascii_general_ci,
-                    `idRegistro`       char(36)         NOT NULL COLLATE utf8mb4_uca1400_ai_ci,
+                    `idRegistro`       char(36)         NOT NULL COLLATE ascii_general_ci,
                     `idUsuario`        char(36)         NOT NULL COLLATE ascii_general_ci,
                     `tipo`             varchar(10)      NOT NULL,
                     `status`           varchar(15)      NOT NULL,
