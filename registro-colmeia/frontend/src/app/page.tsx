@@ -2,7 +2,7 @@
 
 import React from "react";
 import BeeIcon from "@/app/components/BeeIcon";
-import { BarChart2, BookOpen, Mail, ExternalLink, House, LogIn, Hexagon } from "lucide-react";
+import { BarChart2, BookOpen, Mail, ExternalLink, House, LogIn, Hexagon, Info, ArrowRight } from "lucide-react";
 
 // ── Menu público ──────────────────────────────────────────────────────────────
 
@@ -15,6 +15,10 @@ function PublicNav() {
           <a href="/" aria-label="Início"
             className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-400 text-yellow-950 scale-110 shadow-inner transition-all duration-200">
             <House size={17} strokeWidth={2} />
+          </a>
+          <a href="/abelhas" aria-label="Abelhas"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
+            <Info size={17} strokeWidth={2} />
           </a>
           <a href="/dados" aria-label="Dados"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
@@ -33,6 +37,10 @@ function PublicNav() {
           <a href="/" aria-label="Início"
             className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-400 text-yellow-950 transition-all duration-200">
             <House size={17} strokeWidth={2} />
+          </a>
+          <a href="/abelhas" aria-label="Abelhas"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
+            <Info size={17} strokeWidth={2} />
           </a>
           <a href="/dados" aria-label="Dados"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
@@ -105,6 +113,10 @@ export default function HomePage() {
               agroquímicos e perda de habitat, motiva o monitoramento contínuo como ferramenta
               de conservação e manejo preventivo.
             </p>
+            <a href="/abelhas"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-700 hover:text-amber-800 transition-colors mt-auto">
+              Clique aqui e saiba mais sobre as abelhas <ArrowRight size={14} />
+            </a>
           </div>
         </div>
 
