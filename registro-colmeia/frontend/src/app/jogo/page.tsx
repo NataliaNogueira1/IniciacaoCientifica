@@ -354,9 +354,12 @@ export default function JogoPage() {
 
   // carrega o recorde salvo (só no cliente, para evitar divergência de hidratação)
   useEffect(() => {
-    const saved = loadBest();
-    stateRef.current.best = saved;
-    setBest(saved);
+    const id = window.setTimeout(() => {
+      const saved = loadBest();
+      stateRef.current.best = saved;
+      setBest(saved);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, []);
 
   function checkCollision(obs: Obs, beeY: number): boolean {
