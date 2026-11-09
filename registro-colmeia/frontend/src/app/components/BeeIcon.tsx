@@ -7,7 +7,6 @@ export default function BeeIcon({ size = "2rem" }: { size?: string }) {
     <>
       <style>{`
         .bee-wrap {
-          --b: ${s};
           display: inline-block;
           position: relative;
           width: calc(var(--b) * 1.8 + var(--b) * 0.5);
@@ -78,7 +77,7 @@ export default function BeeIcon({ size = "2rem" }: { size?: string }) {
         .bee-face::after  { left: 20%; }
       `}</style>
 
-      <div className="bee-wrap" aria-hidden="true">
+      <div className="bee-wrap" style={{ "--b": s } as React.CSSProperties} aria-hidden="true">
         <div className="bee-body">
           <div className="bee-face" />
         </div>
