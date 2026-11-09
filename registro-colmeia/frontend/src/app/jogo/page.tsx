@@ -182,7 +182,11 @@ function drawBee(ctx: CanvasRenderingContext2D, x: number, y: number, frame: num
   const bob = Math.sin(frame * 0.18) * 1.5; // leve balanço vertical
   ctx.save();
   ctx.font = "28px serif";
-  ctx.fillText("🐝", x, y + BEE_H + bob);
+  // o emoji 🐝 é desenhado olhando para a esquerda; espelha para olhar para a direita
+  const cx = x + 14;
+  ctx.translate(cx, 0);
+  ctx.scale(-1, 1);
+  ctx.fillText("🐝", -14, y + BEE_H + bob);
   ctx.restore();
 }
 

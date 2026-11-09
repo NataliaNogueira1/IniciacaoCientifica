@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import BeeIcon from "@/app/components/BeeIcon";
 import {
   BarChart2,
@@ -22,53 +23,53 @@ function PublicNav() {
       {/* Desktop: pill flutuante igual às outras páginas */}
       <div className="hidden sm:flex fixed top-6 right-16 z-50 items-center" role="navigation">
         <div className="flex items-center bg-yellow-950 border-2 border-yellow-800 rounded-full px-2.5 py-2 gap-1.5 shadow-md">
-          <a href="/" aria-label="Início"
+          <Link href="/" aria-label="Início"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
             <House size={17} strokeWidth={2} />
-          </a>
-          <a href="/abelhas" aria-label="Abelhas" aria-current="page"
+          </Link>
+          <Link href="/abelhas" aria-label="Abelhas" aria-current="page"
             className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-400 text-yellow-950 scale-110 shadow-inner transition-all duration-200">
             <Info size={17} strokeWidth={2} />
-          </a>
-          <a href="/dados" aria-label="Dados"
+          </Link>
+          <Link href="/dados" aria-label="Dados"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
             <BarChart2 size={17} strokeWidth={2} />
-          </a>
-          <a href="/jogo" aria-label="Jogo"
+          </Link>
+          <Link href="/jogo" aria-label="Jogo"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
             <Gamepad2 size={17} strokeWidth={2} />
-          </a>
-          <a href="/login" aria-label="Entrar"
+          </Link>
+          <Link href="/login" aria-label="Entrar"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
             <LogIn size={17} strokeWidth={2} />
-          </a>
+          </Link>
         </div>
       </div>
 
       {/* Mobile: barra no topo igual ao TopBar */}
       <div className="sm:hidden w-full bg-yellow-950 rounded-2xl shadow-xl px-4 py-3 flex items-center justify-between" role="navigation">
         <div className="flex items-center gap-1">
-          <a href="/" aria-label="Início"
+          <Link href="/" aria-label="Início"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
             <House size={17} strokeWidth={2} />
-          </a>
-          <a href="/abelhas" aria-label="Abelhas" aria-current="page"
+          </Link>
+          <Link href="/abelhas" aria-label="Abelhas" aria-current="page"
             className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-400 text-yellow-950 transition-all duration-200">
             <Info size={17} strokeWidth={2} />
-          </a>
-          <a href="/dados" aria-label="Dados"
+          </Link>
+          <Link href="/dados" aria-label="Dados"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
             <BarChart2 size={17} strokeWidth={2} />
-          </a>
-          <a href="/jogo" aria-label="Jogo"
+          </Link>
+          <Link href="/jogo" aria-label="Jogo"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
             <Gamepad2 size={17} strokeWidth={2} />
-          </a>
+          </Link>
         </div>
-        <a href="/login" aria-label="Entrar"
+        <Link href="/login" aria-label="Entrar"
           className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
           <LogIn size={17} strokeWidth={2} />
-        </a>
+        </Link>
       </div>
     </>
   );
@@ -125,41 +126,41 @@ function FlyingBees() {
            usamos valores grandes para cruzar o card inteiro. As que vão para a
            direita começam e terminam FORA do card, então o loop nunca "pisca". */
         @keyframes bee-right-a {
-          0%   { transform: translate(-200%, 0) rotate(0deg); }
-          25%  { transform: translate(1000%, -2.2rem) rotate(4deg); }
-          50%  { transform: translate(1900%, 1.5rem) rotate(-3deg); }
-          75%  { transform: translate(2800%, -1.8rem) rotate(3deg); }
-          100% { transform: translate(3600%, 0.5rem) rotate(0deg); }
+          0%   { transform: translate(-200%, 0) scaleX(-1) rotate(0deg); }
+          25%  { transform: translate(1000%, -2.2rem) scaleX(-1) rotate(4deg); }
+          50%  { transform: translate(1900%, 1.5rem) scaleX(-1) rotate(-3deg); }
+          75%  { transform: translate(2800%, -1.8rem) scaleX(-1) rotate(3deg); }
+          100% { transform: translate(3600%, 0.5rem) scaleX(-1) rotate(0deg); }
         }
         @keyframes bee-right-b {
-          0%   { transform: translate(-200%, 0) rotate(0deg); }
-          30%  { transform: translate(1200%, 2rem) rotate(-4deg); }
-          55%  { transform: translate(2100%, -2.4rem) rotate(4deg); }
-          80%  { transform: translate(3200%, 1.6rem) rotate(-2deg); }
-          100% { transform: translate(4300%, -0.8rem) rotate(0deg); }
+          0%   { transform: translate(-200%, 0) scaleX(-1) rotate(0deg); }
+          30%  { transform: translate(1200%, 2rem) scaleX(-1) rotate(-4deg); }
+          55%  { transform: translate(2100%, -2.4rem) scaleX(-1) rotate(4deg); }
+          80%  { transform: translate(3200%, 1.6rem) scaleX(-1) rotate(-2deg); }
+          100% { transform: translate(4300%, -0.8rem) scaleX(-1) rotate(0deg); }
         }
         @keyframes bee-right-c {
-          0%   { transform: translate(-200%, 0) rotate(0deg); }
-          20%  { transform: translate(1200%, -1.4rem) rotate(3deg); }
-          48%  { transform: translate(2500%, 2.2rem) rotate(-4deg); }
-          72%  { transform: translate(3700%, -1rem) rotate(2deg); }
-          100% { transform: translate(5000%, 1.2rem) rotate(0deg); }
+          0%   { transform: translate(-200%, 0) scaleX(-1) rotate(0deg); }
+          20%  { transform: translate(1200%, -1.4rem) scaleX(-1) rotate(3deg); }
+          48%  { transform: translate(2500%, 2.2rem) scaleX(-1) rotate(-4deg); }
+          72%  { transform: translate(3700%, -1rem) scaleX(-1) rotate(2deg); }
+          100% { transform: translate(5000%, 1.2rem) scaleX(-1) rotate(0deg); }
         }
         /* Sentido contrário: começam na direita (fora) e vão até a esquerda (fora).
            scaleX(-1) espelha a abelha para ela "olhar" na direção do voo. */
         @keyframes bee-left-a {
-          0%   { transform: translate(3600%, 0) scaleX(-1) rotate(0deg); }
-          25%  { transform: translate(2600%, 1.8rem) scaleX(-1) rotate(4deg); }
-          50%  { transform: translate(1700%, -1.6rem) scaleX(-1) rotate(-3deg); }
-          75%  { transform: translate(800%, 2rem) scaleX(-1) rotate(3deg); }
-          100% { transform: translate(-300%, -0.6rem) scaleX(-1) rotate(0deg); }
+          0%   { transform: translate(3600%, 0) rotate(0deg); }
+          25%  { transform: translate(2600%, 1.8rem) rotate(4deg); }
+          50%  { transform: translate(1700%, -1.6rem) rotate(-3deg); }
+          75%  { transform: translate(800%, 2rem) rotate(3deg); }
+          100% { transform: translate(-300%, -0.6rem) rotate(0deg); }
         }
         @keyframes bee-left-b {
-          0%   { transform: translate(4300%, 0) scaleX(-1) rotate(0deg); }
-          28%  { transform: translate(3000%, -2rem) scaleX(-1) rotate(-4deg); }
-          54%  { transform: translate(2000%, 2.2rem) scaleX(-1) rotate(4deg); }
-          78%  { transform: translate(900%, -1.4rem) scaleX(-1) rotate(-2deg); }
-          100% { transform: translate(-300%, 1rem) scaleX(-1) rotate(0deg); }
+          0%   { transform: translate(4300%, 0) rotate(0deg); }
+          28%  { transform: translate(3000%, -2rem) rotate(-4deg); }
+          54%  { transform: translate(2000%, 2.2rem) rotate(4deg); }
+          78%  { transform: translate(900%, -1.4rem) rotate(-2deg); }
+          100% { transform: translate(-300%, 1rem) rotate(0deg); }
         }
         .bee-flyer {
           position: absolute;
@@ -167,9 +168,6 @@ function FlyingBees() {
           animation-timing-function: ease-in-out;
           animation-iteration-count: infinite;
           will-change: transform;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .bee-flyer { animation: none !important; }
         }
       `}</style>
 
