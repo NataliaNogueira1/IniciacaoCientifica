@@ -14,6 +14,26 @@ const BEE_X = 100;
 const BEE_W = 42;
 const BEE_H = 26;
 
+// ── Recorde persistido no navegador ───────────────────────────────────────────
+const BEST_KEY = "mandacaia-run:best";
+
+function loadBest(): number {
+  try {
+    const n = parseInt(window.localStorage.getItem(BEST_KEY) ?? "0", 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0; // localStorage indisponível (modo privado, bloqueado etc.)
+  }
+}
+
+function saveBest(value: number) {
+  try {
+    window.localStorage.setItem(BEST_KEY, String(value));
+  } catch {
+    /* ignora falhas de escrita */
+  }
+}
+
 // Física com controle justo:
 // - JUMP_V: impulso inicial ao apertar (menor = salto mais curto e preciso)
 // - GRAVITY_NORMAL: gravidade padrão enquanto sobe
@@ -182,12 +202,72 @@ function drawPollenTrail(ctx: CanvasRenderingContext2D, x: number, y: number, fr
 function drawBee(ctx: CanvasRenderingContext2D, x: number, y: number, frame: number) {
   const bob = Math.sin(frame * 0.18) * 1.5; // leve balanço vertical
   ctx.save();
-  ctx.font = "28px serif";
-  // o emoji 🐝 é desenhado olhando para a esquerda; espelha para olhar para a direita
-  const cx = x + 14;
-  ctx.translate(cx, 0);
-  ctx.scale(-1, 1);
-  ctx.fillText("🐝", -14, y + BEE_H + bob);
+  // Abelha desenhada em vetor: a orientação não depende da fonte de emoji do SO.
+  // Cabeça sempre à direita (sentido do voo), ferrão à esquerda.
+  ctx.translate(x, y + bob);
+  const cy = BEE_H / 2;
+  const flap = Math.sin(frame * 0.6) * 0.35;
+
+  // asas (atrás do corpo)
+  ctx.fillStyle = "rgba(186,230,253,0.85)";
+  ctx.strokeStyle = "rgba(14,116,144,0.6)";
+  ctx.lineWidth = 1;
+  for (const dx of [0, 7]) {
+    ctx.save();
+    ctx.translate(16 + dx, cy - 6);
+    ctx.rotate(-0.5 - flap);
+    ctx.beginPath();
+    ctx.ellipse(0, -6, 5, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ferrão
+  ctx.fillStyle = "#451a03";
+  ctx.beginPath();
+  ctx.moveTo(4, cy - 2);
+  ctx.lineTo(-2, cy);
+  ctx.lineTo(4, cy + 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // corpo
+  ctx.fillStyle = "#facc15";
+  ctx.beginPath();
+  ctx.ellipse(20, cy, 17, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // listras (recortadas no corpo)
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(20, cy, 17, 10, 0, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = "#451a03";
+  ctx.fillRect(11, 0, 4, BEE_H);
+  ctx.fillRect(19, 0, 4, BEE_H);
+  ctx.fillRect(27, 0, 4, BEE_H);
+  ctx.restore();
+
+  // cabeça, olho e antena
+  ctx.fillStyle = "#451a03";
+  ctx.beginPath();
+  ctx.arc(37, cy, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(39, cy - 2, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#451a03";
+  ctx.beginPath();
+  ctx.arc(39.5, cy - 2, 1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#451a03";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(38, cy - 5);
+  ctx.quadraticCurveTo(41, cy - 11, 44, cy - 9);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -271,6 +351,13 @@ export default function JogoPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [score, setScore] = useState(0);
   const [best,  setBest ] = useState(0);
+
+  // carrega o recorde salvo (só no cliente, para evitar divergência de hidratação)
+  useEffect(() => {
+    const saved = loadBest();
+    stateRef.current.best = saved;
+    setBest(saved);
+  }, []);
 
   function checkCollision(obs: Obs, beeY: number): boolean {
     const bx1 = BEE_X + 6,      bx2 = BEE_X + BEE_W - 6;
@@ -371,7 +458,7 @@ export default function JogoPage() {
           s.beeY  = GROUND_Y - BEE_H;
           s.phase = "dead";
           setPhase("dead");
-          if (s.score > s.best) { s.best = s.score; setBest(s.score); }
+          if (s.score > s.best) { s.best = s.score; setBest(s.score); saveBest(s.score); }
         }
         if (s.beeY <= 0) { s.beeY = 0; s.beeVY = 0; }
 
@@ -401,7 +488,7 @@ export default function JogoPage() {
           if (checkCollision(o, s.beeY)) {
             s.phase = "dead";
             setPhase("dead");
-            if (s.score > s.best) { s.best = s.score; setBest(s.score); }
+            if (s.score > s.best) { s.best = s.score; setBest(s.score); saveBest(s.score); }
           }
         });
       }
