@@ -623,20 +623,25 @@ export default function JogoPage() {
         </div>
         <div className="bg-yellow-950 rounded-2xl shadow-xl p-4 flex flex-col gap-2 col-span-2 sm:col-span-1">
           <p className="text-xs text-yellow-500 uppercase font-semibold tracking-wide">Controles</p>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-2 text-yellow-300 font-semibold">
-            <kbd className="px-4 py-1.5 rounded-lg bg-yellow-100 text-yellow-950 border-b-4 border-yellow-600 text-sm font-bold font-sans">
+          <div className="grid grid-cols-3 gap-2" role="list" aria-label="Formas de controlar a abelha">
+            <kbd
+              role="listitem"
+              className="flex items-center justify-center h-11 rounded-lg bg-yellow-100 text-yellow-950 border-b-4 border-yellow-600 text-sm font-bold font-sans"
+            >
               Espaço
             </kbd>
-            <span className="text-yellow-500 text-sm">ou</span>
             <kbd
+              role="listitem"
               aria-label="Seta para cima"
-              className="flex items-center justify-center w-9 h-9 rounded-lg bg-yellow-100 text-yellow-950 border-b-4 border-yellow-600"
+              className="flex items-center justify-center h-11 rounded-lg bg-yellow-100 text-yellow-950 border-b-4 border-yellow-600"
             >
-              <ArrowUp size={18} strokeWidth={3} aria-hidden="true" />
+              <ArrowUp size={20} strokeWidth={3} aria-hidden="true" />
             </kbd>
-            <span className="text-yellow-500 text-sm">ou</span>
-            <span className="px-3 py-1.5 rounded-lg bg-yellow-900 border border-yellow-700 text-sm">
-              Toque na tela
+            <span
+              role="listitem"
+              className="flex items-center justify-center h-11 rounded-lg bg-yellow-900 border border-yellow-700 text-yellow-300 text-sm font-bold"
+            >
+              Toque
             </span>
           </div>
           <p className="text-sm text-yellow-400">Pressione para fazer a abelha subir e desviar dos favos de mel!</p>
