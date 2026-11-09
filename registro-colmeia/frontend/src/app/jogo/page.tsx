@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import { House, RotateCcw, BarChart2, Info, LogIn, Gamepad2 } from "lucide-react";
 
 // ── Constantes do jogo ────────────────────────────────────────────────────────
@@ -445,52 +446,52 @@ export default function JogoPage() {
       {/* Nav pública — pill flutuante no desktop, barra no mobile */}
       <div className="hidden sm:flex fixed top-6 right-16 z-50 items-center" role="navigation">
         <div className="flex items-center bg-yellow-950 border-2 border-yellow-800 rounded-full px-2.5 py-2 gap-1.5 shadow-md">
-          <a href="/" aria-label="Início"
+          <Link href="/" aria-label="Início"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
             <House size={17} strokeWidth={2} />
-          </a>
-          <a href="/abelhas" aria-label="Abelhas"
+          </Link>
+          <Link href="/abelhas" aria-label="Abelhas"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
             <Info size={17} strokeWidth={2} />
-          </a>
-          <a href="/dados" aria-label="Dados"
+          </Link>
+          <Link href="/dados" aria-label="Dados"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
             <BarChart2 size={17} strokeWidth={2} />
-          </a>
-          <a href="/jogo" aria-label="Jogo" aria-current="page"
+          </Link>
+          <Link href="/jogo" aria-label="Jogo" aria-current="page"
             className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-400 text-yellow-950 scale-110 shadow-inner transition-all duration-200">
             <Gamepad2 size={17} strokeWidth={2} />
-          </a>
-          <a href="/login" aria-label="Entrar"
+          </Link>
+          <Link href="/login" aria-label="Entrar"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
             <LogIn size={17} strokeWidth={2} />
-          </a>
+          </Link>
         </div>
       </div>
 
       <div className="sm:hidden w-full max-w-5xl bg-yellow-950 rounded-2xl shadow-xl px-4 py-3 flex items-center justify-between mb-4" role="navigation">
         <div className="flex items-center gap-1">
-          <a href="/" aria-label="Início"
+          <Link href="/" aria-label="Início"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
             <House size={17} strokeWidth={2} />
-          </a>
-          <a href="/abelhas" aria-label="Abelhas"
+          </Link>
+          <Link href="/abelhas" aria-label="Abelhas"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
             <Info size={17} strokeWidth={2} />
-          </a>
-          <a href="/dados" aria-label="Dados"
+          </Link>
+          <Link href="/dados" aria-label="Dados"
             className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
             <BarChart2 size={17} strokeWidth={2} />
-          </a>
-          <a href="/jogo" aria-label="Jogo" aria-current="page"
+          </Link>
+          <Link href="/jogo" aria-label="Jogo" aria-current="page"
             className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-400 text-yellow-950 transition-all duration-200">
             <Gamepad2 size={17} strokeWidth={2} />
-          </a>
+          </Link>
         </div>
-        <a href="/login" aria-label="Entrar"
+        <Link href="/login" aria-label="Entrar"
           className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
           <LogIn size={17} strokeWidth={2} />
-        </a>
+        </Link>
       </div>
 
       {/* Título em caixa */}
