@@ -278,79 +278,84 @@ function drawPollenTrail(ctx: CanvasRenderingContext2D, x: number, y: number, fr
   ctx.restore();
 }
 
-// Abelha como emoji — simples e reconhecível
+// Mandaçaia em vetor, no mesmo estilo dos predadores (formas chapadas e simples).
+// Cabeça sempre à direita (sentido do voo). Abelha sem ferrão: abdômen arredondado.
 function drawBee(ctx: CanvasRenderingContext2D, x: number, y: number, frame: number) {
-  const bob = Math.sin(frame * 0.18) * 1.5; // leve balanço vertical
-  ctx.save();
-  // Abelha desenhada em vetor: a orientação não depende da fonte de emoji do SO.
-  // Cabeça sempre à direita (sentido do voo), ferrão à esquerda.
-  ctx.translate(x, y + bob);
-  const cy = BEE_H / 2;
+  const bob  = Math.sin(frame * 0.18) * 1.5; // leve balanço vertical
   const flap = Math.sin(frame * 0.6) * 0.35;
+  const cy   = BEE_H / 2;
+  ctx.save();
+  ctx.translate(x, y + bob);
 
-  // asas (atrás do corpo)
-  ctx.fillStyle = "rgba(186,230,253,0.85)";
+  // pernas
+  ctx.strokeStyle = "#1c1917";
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = "round";
+  for (const lx of [22, 27, 32]) {
+    ctx.beginPath();
+    ctx.moveTo(lx, cy + 6);
+    ctx.lineTo(lx - 2, cy + 11);
+    ctx.stroke();
+  }
+
+  // asas (2 pares, atrás do corpo)
+  ctx.fillStyle = "rgba(186,230,253,0.75)";
   ctx.strokeStyle = "rgba(14,116,144,0.6)";
   ctx.lineWidth = 1;
-  for (const dx of [0, 7]) {
+  for (const [wx, rot] of [[22, -0.7], [28, -0.25]] as const) {
     ctx.save();
-    ctx.translate(16 + dx, cy - 6);
-    ctx.rotate(-0.5 - flap);
+    ctx.translate(wx, cy - 5);
+    ctx.rotate(rot - flap);
     ctx.beginPath();
-    ctx.ellipse(0, -6, 5, 9, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -7, 3.8, 9, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
   }
 
-  // ferrão
+  // abdômen (marrom escuro) com faixas amarelas da quadrifasciata
   ctx.fillStyle = "#451a03";
   ctx.beginPath();
-  ctx.moveTo(4, cy - 2);
-  ctx.lineTo(-2, cy);
-  ctx.lineTo(4, cy + 2);
-  ctx.closePath();
+  ctx.ellipse(14, cy, 13, 8.5, 0, 0, Math.PI * 2);
   ctx.fill();
-
-  // corpo
-  ctx.fillStyle = "#facc15";
-  ctx.beginPath();
-  ctx.ellipse(20, cy, 17, 10, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // listras (recortadas no corpo)
   ctx.save();
   ctx.beginPath();
-  ctx.ellipse(20, cy, 17, 10, 0, 0, Math.PI * 2);
+  ctx.ellipse(14, cy, 13, 8.5, 0, 0, Math.PI * 2);
   ctx.clip();
-  ctx.fillStyle = "#451a03";
-  ctx.fillRect(11, 0, 4, BEE_H);
-  ctx.fillRect(19, 0, 4, BEE_H);
-  ctx.fillRect(27, 0, 4, BEE_H);
+  ctx.fillStyle = "#facc15";
+  ctx.fillRect(6, 0, 3.5, BEE_H);
+  ctx.fillRect(12, 0, 3.5, BEE_H);
+  ctx.fillRect(18, 0, 3.5, BEE_H);
   ctx.restore();
 
-  // cabeça, olho e antena
-  ctx.fillStyle = "#451a03";
+  // tórax peludo
+  ctx.fillStyle = "#b45309";
   ctx.beginPath();
-  ctx.arc(37, cy, 6, 0, Math.PI * 2);
+  ctx.ellipse(28, cy, 7.5, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // cabeça, olho e antena
+  ctx.fillStyle = "#292524";
+  ctx.beginPath();
+  ctx.arc(37, cy + 1, 5.5, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
-  ctx.arc(39, cy - 2, 2, 0, Math.PI * 2);
+  ctx.arc(39, cy - 0.5, 2.1, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#451a03";
+  ctx.fillStyle = "#0c0a09";
   ctx.beginPath();
-  ctx.arc(39.5, cy - 2, 1, 0, Math.PI * 2);
+  ctx.arc(39.6, cy - 0.5, 1, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "#451a03";
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "#292524";
+  ctx.lineWidth = 1.3;
   ctx.beginPath();
-  ctx.moveTo(38, cy - 5);
-  ctx.quadraticCurveTo(41, cy - 11, 44, cy - 9);
+  ctx.moveTo(38, cy - 3.5);
+  ctx.quadraticCurveTo(40, cy - 9, 44, cy - 8);
   ctx.stroke();
+
   ctx.restore();
 }
-
 // Ninho da Melipona quadrifasciata (mandaçaia): aglomerado de várias bolinhas
 // (células e potes de cerume) em vez de favos hexagonais retos.
 function drawHoneycomb(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
