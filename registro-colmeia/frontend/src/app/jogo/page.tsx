@@ -165,23 +165,65 @@ function drawGround(ctx: CanvasRenderingContext2D, frame: number) {
   });
 }
 
-// Gotinha de mel caindo do favo
+// Mel escorrendo pela superfície do ninho: filetes descem devagar pelas bolinhas
+// e, ao chegar na ponta, uma gota se solta, cai e some. Depois o ciclo recomeça.
+// A fase usa topH para que os obstáculos não escorram todos ao mesmo tempo.
 function drawHoneyDrip(ctx: CanvasRenderingContext2D, x: number, topH: number, frame: number) {
-  const dripY = topH + Math.sin(frame * 0.06) * 6 + 4;
-  ctx.save();
-  ctx.fillStyle = "#fbbf24";
-  ctx.beginPath();
-  ctx.arc(x + OBS_W / 2, dripY, 4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(x + OBS_W / 2 - 3, topH);
-  ctx.lineTo(x + OBS_W / 2 + 3, topH);
-  ctx.lineTo(x + OBS_W / 2, dripY - 1);
-  ctx.fillStyle = "#f59e0b";
-  ctx.fill();
-  ctx.restore();
-}
+  const SPEED = 0.55;                        // px/frame do filete
+  const FALL  = 45;                          // frames da gota caindo
+  const REST  = 40;                          // pausa antes de recomeçar
+  const run   = topH / SPEED;                // frames para o filete percorrer o ninho
+  const total = run + FALL + REST;
+  const lanes = [0.22, 0.52, 0.8];           // posição horizontal de cada filete
 
+  lanes.forEach((lx, i) => {
+    const f  = (frame + i * 67 + topH * 3) % total;
+    const cx = x + OBS_W * lx;
+    ctx.save();
+
+    if (f < run) {
+      // filete descendo pelo ninho (recortado na área do ninho)
+      const head = f * SPEED;
+      ctx.beginPath();
+      ctx.rect(x, 0, OBS_W, topH);
+      ctx.clip();
+      ctx.strokeStyle = "rgba(251,191,36,0.9)";
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx, head);
+      ctx.stroke();
+      ctx.fillStyle = "#fcd34d";
+      ctx.beginPath();
+      ctx.arc(cx, head, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (f < run + FALL) {
+      // chegou à ponta: o filete esvai e a gota se solta e cai acelerando
+      const k = (f - run) / FALL; // 0 → 1
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, 0, OBS_W, topH);
+      ctx.clip();
+      ctx.globalAlpha = 1 - k;
+      ctx.strokeStyle = "rgba(251,191,36,0.9)";
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx, topH);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.globalAlpha = 1 - k * k;
+      ctx.fillStyle = "#fbbf24";
+      ctx.beginPath();
+      ctx.arc(cx, topH + 3 + k * k * 60, 3.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  });
+}
 // Rastro de pólen atrás da abelha
 function drawPollenTrail(ctx: CanvasRenderingContext2D, x: number, y: number, frame: number) {
   ctx.save();
@@ -271,37 +313,52 @@ function drawBee(ctx: CanvasRenderingContext2D, x: number, y: number, frame: num
   ctx.restore();
 }
 
+// Ninho da Melipona quadrifasciata (mandaçaia): aglomerado de várias bolinhas
+// (células e potes de cerume) em vez de favos hexagonais retos.
 function drawHoneycomb(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
   if (h <= 0) return;
   ctx.save();
+  // recorta na área da hitbox para o desenho coincidir com a colisão
   ctx.beginPath();
-  ctx.roundRect(x, y, w, h, 5);
-  ctx.fillStyle = "#d97706";
-  ctx.fill();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
 
-  ctx.strokeStyle = "#92400e";
-  ctx.lineWidth   = 1.3;
-  const size = 11;
-  const rows = Math.ceil(h / (size * 1.5)) + 1;
-  const cols = Math.ceil(w / (size * Math.sqrt(3))) + 2;
-  ctx.beginPath();
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const hx = x + c * size * Math.sqrt(3) + (r % 2) * size * (Math.sqrt(3) / 2);
-      const hy = y + r * size * 1.5;
-      for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI / 3) * i - Math.PI / 6;
-        const px = hx + size * 0.55 * Math.cos(angle);
-        const py = hy + size * 0.55 * Math.sin(angle);
-        if (i === 0) { ctx.moveTo(px, py); } else { ctx.lineTo(px, py); }
-      }
-      ctx.closePath();
+  // fundo escuro entre as bolinhas
+  ctx.fillStyle = "#5c2a0a";
+  ctx.fillRect(x, y, w, h);
+
+  const r    = 5.6;   // raio base das bolinhas
+  const rowH = 9.2;   // espaçamento vertical (bolinhas encostadas)
+  const rows = Math.ceil(h / rowH) + 1;
+  const tones = ["#b45309", "#d97706", "#f59e0b", "#a16207"];
+
+  for (let row = 0; row < rows; row++) {
+    const odd  = row % 2 === 1;
+    const cols = odd ? 2 : 3;
+    const gap  = w / 3;
+    for (let col = 0; col < cols; col++) {
+      const k  = row * 3 + col;
+      const bx = x + (odd ? gap + col * gap : gap / 2 + col * gap);
+      const by = y + row * rowH + 2;
+      const br = r + Math.sin(k * 1.7) * 0.7; // leve variação de tamanho
+
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fillStyle = tones[k % tones.length];
+      ctx.fill();
+      ctx.strokeStyle = "#3b1a06";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // brilho
+      ctx.beginPath();
+      ctx.arc(bx - br * 0.3, by - br * 0.3, br * 0.28, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(254,243,199,0.7)";
+      ctx.fill();
     }
   }
-  ctx.stroke();
   ctx.restore();
 }
-
 function drawScore(ctx: CanvasRenderingContext2D, score: number, best: number) {
   ctx.save();
   ctx.fillStyle = "#451a03";
