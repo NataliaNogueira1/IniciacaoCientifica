@@ -62,6 +62,44 @@ interface Obs {
   passed: boolean;
 }
 
+// Predadores da mandaçaia (Melipona quadrifasciata)
+// - aranha: pendurada num fio de teia, balança na vertical
+// - libélula: caça abelhas em pleno voo, ondula rápido
+// - bemtevi: ave insetívora que mergulha na diagonal
+// - forideo: mosca Pseudohypocera kerteszi, invade colmeias; voo em zigue-zague
+type PredatorKind = "aranha" | "libelula" | "bemtevi" | "forideo";
+
+interface Predator {
+  kind: PredatorKind;
+  x: number;
+  y: number;      // topo da hitbox (atualizado a cada frame)
+  baseY: number;  // altura de referência do movimento
+  w: number;
+  h: number;
+  vx: number;     // velocidade extra além da rolagem do cenário
+  phase: number;  // deslocamento da senoide
+  born: number;   // frame de criação
+  passed: boolean;
+}
+
+const PREDATOR_MIN_SCORE = 3;    // só aparecem depois de alguns pontos
+const PREDATOR_COOLDOWN_MIN = 140;
+const PREDATOR_COOLDOWN_MAX = 280;
+
+const PREDATOR_LABEL: Record<string, string> = {
+  aranha: "uma aranha",
+  libelula: "uma libélula",
+  bemtevi: "um bem-te-vi",
+  forideo: "um forídeo",
+};
+
+const PREDATOR_SIZE: Record<PredatorKind, { w: number; h: number; vx: number }> = {
+  aranha:   { w: 26, h: 26, vx: 0 },
+  libelula: { w: 46, h: 14, vx: 2.5 },
+  bemtevi:  { w: 40, h: 26, vx: 1.5 },
+  forideo:  { w: 16, h: 12, vx: 3.5 },
+};
+
 // ── Helpers de desenho ────────────────────────────────────────────────────────
 
 // Nuvens decorativas em parallax (fundo)
@@ -359,6 +397,168 @@ function drawHoneycomb(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   }
   ctx.restore();
 }
+// Altura do predador no frame atual (cada espécie tem seu padrão de voo)
+function predatorY(p: Predator, frame: number): number {
+  const t = frame - p.born;
+  switch (p.kind) {
+    case "aranha":   return p.baseY + Math.sin(t * 0.06 + p.phase) * 22;
+    case "libelula": return p.baseY + Math.sin(t * 0.07 + p.phase) * 38;
+    case "bemtevi":  return p.baseY + t * 1.6;                       // mergulho
+    case "forideo":  return p.baseY + Math.sin(t * 0.25 + p.phase) * 26; // zigue-zague
+  }
+}
+
+function drawPredator(ctx: CanvasRenderingContext2D, p: Predator, frame: number) {
+  const t  = frame - p.born;
+  const cx = p.x + p.w / 2;
+  const cy = p.y + p.h / 2;
+  ctx.save();
+
+  if (p.kind === "aranha") {
+    // fio de teia até o teto
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, 0);
+    ctx.lineTo(cx, cy);
+    ctx.stroke();
+    // pernas
+    ctx.strokeStyle = "#1c1917";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i++) {
+      const dy = -8 + i * 5.5;
+      const wig = Math.sin(t * 0.3 + i) * 2;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + side * 10, cy + dy + wig);
+        ctx.lineTo(cx + side * 15, cy + dy + 6 + wig);
+        ctx.stroke();
+      }
+    }
+    // corpo
+    ctx.fillStyle = "#292524";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 3, 8, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy - 7, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // marca vermelha e olhos
+    ctx.fillStyle = "#dc2626";
+    ctx.beginPath();
+    ctx.arc(cx, cy + 4, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fef08a";
+    ctx.fillRect(cx - 3, cy - 9, 2, 2);
+    ctx.fillRect(cx + 1, cy - 9, 2, 2);
+  }
+
+  if (p.kind === "libelula") {
+    const flap = Math.sin(t * 0.7) * 0.35;
+    // asas (2 pares)
+    ctx.fillStyle = "rgba(186,230,253,0.75)";
+    ctx.strokeStyle = "rgba(14,116,144,0.6)";
+    ctx.lineWidth = 1;
+    for (const wx of [cx - 4, cx + 6]) {
+      for (const dir of [-1, 1]) {
+        ctx.save();
+        ctx.translate(wx, cy);
+        ctx.rotate(dir * (0.5 + flap));
+        ctx.beginPath();
+        ctx.ellipse(0, dir * -9, 3.5, 11, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    // abdômen longo (cauda à direita, cabeça à esquerda)
+    ctx.strokeStyle = "#0d9488";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy);
+    ctx.lineTo(p.x + p.w, cy);
+    ctx.stroke();
+    // tórax e cabeça
+    ctx.fillStyle = "#0f766e";
+    ctx.beginPath();
+    ctx.ellipse(cx - 8, cy, 6, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#dc2626";
+    ctx.beginPath();
+    ctx.arc(p.x + 3, cy, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (p.kind === "bemtevi") {
+    const flap = Math.sin(t * 0.45) * 0.6;
+    // asa
+    ctx.fillStyle = "#78350f";
+    ctx.save();
+    ctx.translate(cx + 2, cy - 2);
+    ctx.rotate(-0.4 - flap);
+    ctx.beginPath();
+    ctx.ellipse(0, -8, 6, 12, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // cauda
+    ctx.fillStyle = "#78350f";
+    ctx.beginPath();
+    ctx.moveTo(p.x + p.w - 6, cy - 3);
+    ctx.lineTo(p.x + p.w + 6, cy - 6);
+    ctx.lineTo(p.x + p.w + 6, cy + 2);
+    ctx.closePath();
+    ctx.fill();
+    // corpo: dorso marrom, peito amarelo
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.ellipse(cx + 2, cy + 2, 15, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // cabeça cinza com faixa preta
+    ctx.fillStyle = "#57534e";
+    ctx.beginPath();
+    ctx.arc(p.x + 9, cy - 1, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0c0a09";
+    ctx.fillRect(p.x + 3, cy - 4, 12, 2.5);
+    // olho e bico (aponta para a esquerda)
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(p.x + 7, cy - 1, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0c0a09";
+    ctx.beginPath();
+    ctx.moveTo(p.x + 3, cy - 1);
+    ctx.lineTo(p.x - 5, cy + 1);
+    ctx.lineTo(p.x + 3, cy + 3);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  if (p.kind === "forideo") {
+    const flap = Math.sin(t * 1.2) * 0.4;
+    ctx.fillStyle = "rgba(226,232,240,0.8)";
+    ctx.save();
+    ctx.translate(cx, cy - 2);
+    ctx.rotate(-0.5 - flap);
+    ctx.beginPath();
+    ctx.ellipse(0, -4, 2.5, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "#1c1917";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 1, 7, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#b91c1c";
+    ctx.beginPath();
+    ctx.arc(p.x + 3, cy, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
 function drawScore(ctx: CanvasRenderingContext2D, score: number, best: number) {
   ctx.save();
   ctx.fillStyle = "#451a03";
@@ -398,6 +598,9 @@ export default function JogoPage() {
     beeVY: 0,
     holding: false,   // espaço/toque mantido pressionado
     obstacles: [] as Obs[],
+    predators: [] as Predator[],
+    nextPredator: PREDATOR_COOLDOWN_MIN, // frames até o próximo predador
+    killedBy: "" as string,              // nome do predador que causou a derrota
     score: 0,
     best:  0,
     speed: OBS_SPEED_INIT,
@@ -429,6 +632,31 @@ export default function JogoPage() {
     return false;
   }
 
+  function checkPredatorCollision(p: Predator, beeY: number): boolean {
+    const bx1 = BEE_X + 6,  bx2 = BEE_X + BEE_W - 6;
+    const by1 = beeY + 4,   by2 = beeY + BEE_H - 4;
+    const px1 = p.x + 3,    px2 = p.x + p.w - 3;
+    const py1 = p.y + 2,    py2 = p.y + p.h - 2;
+    return !(bx2 < px1 || bx1 > px2 || by2 < py1 || by1 > py2);
+  }
+
+  function spawnPredator(frame: number): Predator {
+    const kinds: PredatorKind[] = ["aranha", "libelula", "bemtevi", "forideo"];
+    const kind = kinds[Math.floor(Math.random() * kinds.length)];
+    const { w, h, vx } = PREDATOR_SIZE[kind];
+    let baseY: number;
+    switch (kind) {
+      case "aranha":   baseY = 90 + Math.random() * 120; break;           // pendurada a meia altura
+      case "libelula": baseY = 90 + Math.random() * (GROUND_Y - 200); break;
+      case "bemtevi":  baseY = 10 + Math.random() * 60; break;            // começa no alto e mergulha
+      default:         baseY = 80 + Math.random() * (GROUND_Y - 190);
+    }
+    return {
+      kind, x: CANVAS_W + 40, y: baseY, baseY, w, h, vx,
+      phase: Math.random() * Math.PI * 2, born: frame, passed: false,
+    };
+  }
+
   function spawnObs(fromX: number): Obs {
     const gap  = OBS_GAP_MIN + Math.random() * (OBS_GAP_MAX - OBS_GAP_MIN);
     const topH = 50 + Math.random() * (GROUND_Y - gap - 100);
@@ -442,6 +670,9 @@ export default function JogoPage() {
     s.beeVY   = 0;
     s.holding = false;
     s.obstacles = [spawnObs(CANVAS_W + 80)];
+    s.predators = [];
+    s.nextPredator = PREDATOR_COOLDOWN_MIN;
+    s.killedBy = "";
     s.score   = 0;
     s.speed   = OBS_SPEED_INIT;
     s.frame   = 0;
@@ -538,6 +769,39 @@ export default function JogoPage() {
         // limpar fora da tela
         s.obstacles = s.obstacles.filter((o) => o.x + OBS_W > -20);
 
+        // predadores: aparecem após alguns pontos e só quando há espaço livre
+        // depois do último favo, para não surgirem colados num obstáculo
+        s.nextPredator--;
+        if (
+          s.score >= PREDATOR_MIN_SCORE &&
+          s.nextPredator <= 0 &&
+          (!last || last.x < CANVAS_W - 220)
+        ) {
+          s.predators.push(spawnPredator(s.frame));
+          s.nextPredator =
+            PREDATOR_COOLDOWN_MIN + Math.random() * (PREDATOR_COOLDOWN_MAX - PREDATOR_COOLDOWN_MIN);
+        }
+
+        s.predators.forEach((p) => {
+          p.x -= s.speed + p.vx;
+          p.y  = predatorY(p, s.frame);
+        });
+        s.predators = s.predators.filter((p) => p.x + p.w > -60 && p.y < GROUND_Y + 40);
+
+        s.predators.forEach((p) => {
+          if (!p.passed && p.x + p.w < BEE_X) {
+            p.passed = true;
+            s.score++;
+            setScore(s.score);
+          }
+          if (s.phase === "playing" && checkPredatorCollision(p, s.beeY)) {
+            s.phase = "dead";
+            s.killedBy = p.kind;
+            setPhase("dead");
+            if (s.score > s.best) { s.best = s.score; setBest(s.score); saveBest(s.score); }
+          }
+        });
+
         // score e colisão
         s.obstacles.forEach((o) => {
           if (!o.passed && o.x + OBS_W < BEE_X) {
@@ -560,6 +824,9 @@ export default function JogoPage() {
         drawHoneycomb(ctx, o.x, o.botY, OBS_W, GROUND_Y - o.botY);
       });
 
+      // predadores
+      s.predators.forEach((p) => drawPredator(ctx, p, s.frame));
+
       // rastro de pólen + abelha
       drawPollenTrail(ctx, BEE_X, s.beeY, s.frame);
       drawBee(ctx, BEE_X, s.beeY, s.frame);
@@ -574,7 +841,8 @@ export default function JogoPage() {
         ]);
       }
       if (s.phase === "dead") {
-        drawOverlay(ctx, "💥 Colisão!", [
+        const killer = PREDATOR_LABEL[s.killedBy];
+        drawOverlay(ctx, killer ? `💥 Pega por ${killer}!` : "💥 Colisão!", [
           `Pontuação: ${s.score}   Recorde: ${s.best}`,
           "Espaço, seta para cima ou toque para recomeçar",
         ]);
@@ -647,7 +915,7 @@ export default function JogoPage() {
           <div className="w-12 h-12 rounded-full bg-amber-400 flex items-center justify-center shrink-0 text-2xl" aria-hidden="true">🐝</div>
           <div>
             <h1 className="text-2xl font-black text-yellow-300">Mandaçaia Run</h1>
-            <p className="text-sm text-yellow-400 mt-0.5">Ajude a mandaçaia a desviar dos favos e bata seu recorde!</p>
+            <p className="text-sm text-yellow-400 mt-0.5">Ajude a mandaçaia a desviar dos favos e dos predadores e bata seu recorde!</p>
           </div>
         </div>
       </div>
@@ -701,7 +969,7 @@ export default function JogoPage() {
               Toque
             </span>
           </div>
-          <p className="text-sm text-yellow-400">Pressione para fazer a abelha subir e desviar dos favos de mel!</p>
+          <p className="text-sm text-yellow-400">Pressione para fazer a abelha subir e desviar dos favos de mel e dos predadores (aranha, libélula, bem-te-vi e forídeo)!</p>
         </div>
       </div>
 
