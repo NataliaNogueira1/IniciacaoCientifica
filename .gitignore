@@ -1,4 +1,7 @@
-artigo_overleaf/
+# Ignora tudo na raiz, exceto registro-colmeia e este .gitignore
+/*
+!/.gitignore
+!/registro-colmeia/
 
 bin/
 obj/
