@@ -1,0 +1,685 @@
+"use client";
+
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
+import { House, RotateCcw, BarChart2, Info, LogIn, Gamepad2, ArrowUp } from "lucide-react";
+import {
+  CANVAS_W, CANVAS_H, GROUND_Y, BEE_X, BEE_W, BEE_H, OBS_W,
+  drawSky, drawClouds, drawSun, drawTrees, drawGround,
+  drawHoneyDrip, drawPollenTrail, drawBee, drawHoneycomb,
+} from "./desenho";
+
+// ── Constantes do jogo ────────────────────────────────────────────────────────
+
+// ── Recorde persistido no navegador ───────────────────────────────────────────
+const BEST_KEY = "mandacaia-run:best";
+
+function loadBest(): number {
+  try {
+    const n = parseInt(window.localStorage.getItem(BEST_KEY) ?? "0", 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0; // localStorage indisponível (modo privado, bloqueado etc.)
+  }
+}
+
+function saveBest(value: number) {
+  try {
+    window.localStorage.setItem(BEST_KEY, String(value));
+  } catch {
+    /* ignora falhas de escrita */
+  }
+}
+
+// Física com controle justo:
+// - JUMP_V: impulso inicial ao apertar (menor = salto mais curto e preciso)
+// - GRAVITY_NORMAL: gravidade padrão enquanto sobe
+// - GRAVITY_FALL: gravidade maior na descida (responsividade ao soltar)
+// - MAX_FALL: velocidade máxima de queda (evita queda brusca demais)
+const JUMP_V        = -5.5;  // impulso inicial suave
+const GRAVITY_NORMAL = 0.28; // subida suave
+const GRAVITY_FALL   = 0.50; // descida mais rápida → controle responsivo
+const MAX_FALL       = 7.0;  // limite de velocidade de queda
+
+const OBS_GAP_MIN     = 110;  // abertura menor → mais difícil
+const OBS_GAP_MAX     = 160;
+const OBS_SPACING_MIN = 240;  // obstáculos mais próximos
+const OBS_SPACING_MAX = 340;
+const OBS_SPEED_INIT  = 5.0;  // velocidade inicial maior
+const OBS_SPEED_MAX   = 13.0;
+const SPEED_INC       = 0.0012; // acelera mais rápido
+
+type Phase = "idle" | "playing" | "dead";
+
+interface Obs {
+  x: number;
+  topH: number;
+  botY: number;
+  passed: boolean;
+}
+
+// Predadores da mandaçaia (Melipona quadrifasciata)
+// - aranha: pendurada num fio de teia, balança na vertical
+// - libélula: caça abelhas em pleno voo, ondula rápido
+// - bemtevi: ave insetívora que mergulha na diagonal
+// - forideo: mosca Pseudohypocera kerteszi, invade colmeias; voo em zigue-zague
+type PredatorKind = "aranha" | "libelula" | "bemtevi" | "forideo";
+
+interface Predator {
+  kind: PredatorKind;
+  x: number;
+  y: number;      // topo da hitbox (atualizado a cada frame)
+  baseY: number;  // altura de referência do movimento
+  w: number;
+  h: number;
+  vx: number;     // velocidade extra além da rolagem do cenário
+  phase: number;  // deslocamento da senoide
+  born: number;   // frame de criação
+  passed: boolean;
+}
+
+const PREDATOR_MIN_SCORE = 3;    // só aparecem depois de alguns pontos
+const PREDATOR_COOLDOWN_MIN = 140;
+const PREDATOR_COOLDOWN_MAX = 280;
+
+const PREDATOR_LABEL: Record<string, string> = {
+  aranha: "uma aranha",
+  libelula: "uma libélula",
+  bemtevi: "um bem-te-vi",
+  forideo: "um forídeo",
+};
+
+const PREDATOR_SIZE: Record<PredatorKind, { w: number; h: number; vx: number }> = {
+  aranha:   { w: 26, h: 26, vx: 0 },
+  libelula: { w: 46, h: 14, vx: 2.5 },
+  bemtevi:  { w: 40, h: 26, vx: 1.5 },
+  forideo:  { w: 16, h: 12, vx: 3.5 },
+};
+
+// ── Helpers de desenho ────────────────────────────────────────────────────────
+// Altura do predador no frame atual (cada espécie tem seu padrão de voo)
+function predatorY(p: Predator, frame: number): number {
+  const t = frame - p.born;
+  switch (p.kind) {
+    case "aranha":   return p.baseY + Math.sin(t * 0.06 + p.phase) * 22;
+    case "libelula": return p.baseY + Math.sin(t * 0.07 + p.phase) * 38;
+    case "bemtevi":  return p.baseY + t * 1.6;                       // mergulho
+    case "forideo":  return p.baseY + Math.sin(t * 0.25 + p.phase) * 26; // zigue-zague
+  }
+}
+
+function drawPredator(ctx: CanvasRenderingContext2D, p: Predator, frame: number) {
+  const t  = frame - p.born;
+  const cx = p.x + p.w / 2;
+  const cy = p.y + p.h / 2;
+  ctx.save();
+
+  if (p.kind === "aranha") {
+    // fio de teia até o teto
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, 0);
+    ctx.lineTo(cx, cy);
+    ctx.stroke();
+    // pernas
+    ctx.strokeStyle = "#1c1917";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i++) {
+      const dy = -8 + i * 5.5;
+      const wig = Math.sin(t * 0.3 + i) * 2;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + side * 10, cy + dy + wig);
+        ctx.lineTo(cx + side * 15, cy + dy + 6 + wig);
+        ctx.stroke();
+      }
+    }
+    // corpo
+    ctx.fillStyle = "#292524";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 3, 8, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy - 7, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // marca vermelha e olhos
+    ctx.fillStyle = "#dc2626";
+    ctx.beginPath();
+    ctx.arc(cx, cy + 4, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fef08a";
+    ctx.fillRect(cx - 3, cy - 9, 2, 2);
+    ctx.fillRect(cx + 1, cy - 9, 2, 2);
+  }
+
+  if (p.kind === "libelula") {
+    const flap = Math.sin(t * 0.7) * 0.35;
+    // asas (2 pares)
+    ctx.fillStyle = "rgba(186,230,253,0.75)";
+    ctx.strokeStyle = "rgba(14,116,144,0.6)";
+    ctx.lineWidth = 1;
+    for (const wx of [cx - 4, cx + 6]) {
+      for (const dir of [-1, 1]) {
+        ctx.save();
+        ctx.translate(wx, cy);
+        ctx.rotate(dir * (0.5 + flap));
+        ctx.beginPath();
+        ctx.ellipse(0, dir * -9, 3.5, 11, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    // abdômen longo (cauda à direita, cabeça à esquerda)
+    ctx.strokeStyle = "#0d9488";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy);
+    ctx.lineTo(p.x + p.w, cy);
+    ctx.stroke();
+    // tórax e cabeça
+    ctx.fillStyle = "#0f766e";
+    ctx.beginPath();
+    ctx.ellipse(cx - 8, cy, 6, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#dc2626";
+    ctx.beginPath();
+    ctx.arc(p.x + 3, cy, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (p.kind === "bemtevi") {
+    const flap = Math.sin(t * 0.45) * 0.6;
+    // asa
+    ctx.fillStyle = "#78350f";
+    ctx.save();
+    ctx.translate(cx + 2, cy - 2);
+    ctx.rotate(-0.4 - flap);
+    ctx.beginPath();
+    ctx.ellipse(0, -8, 6, 12, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // cauda
+    ctx.fillStyle = "#78350f";
+    ctx.beginPath();
+    ctx.moveTo(p.x + p.w - 6, cy - 3);
+    ctx.lineTo(p.x + p.w + 6, cy - 6);
+    ctx.lineTo(p.x + p.w + 6, cy + 2);
+    ctx.closePath();
+    ctx.fill();
+    // corpo: dorso marrom, peito amarelo
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.ellipse(cx + 2, cy + 2, 15, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // cabeça cinza com faixa preta
+    ctx.fillStyle = "#57534e";
+    ctx.beginPath();
+    ctx.arc(p.x + 9, cy - 1, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0c0a09";
+    ctx.fillRect(p.x + 3, cy - 4, 12, 2.5);
+    // olho e bico (aponta para a esquerda)
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(p.x + 7, cy - 1, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0c0a09";
+    ctx.beginPath();
+    ctx.moveTo(p.x + 3, cy - 1);
+    ctx.lineTo(p.x - 5, cy + 1);
+    ctx.lineTo(p.x + 3, cy + 3);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  if (p.kind === "forideo") {
+    const flap = Math.sin(t * 1.2) * 0.4;
+    ctx.fillStyle = "rgba(226,232,240,0.8)";
+    ctx.save();
+    ctx.translate(cx, cy - 2);
+    ctx.rotate(-0.5 - flap);
+    ctx.beginPath();
+    ctx.ellipse(0, -4, 2.5, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "#1c1917";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 1, 7, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#b91c1c";
+    ctx.beginPath();
+    ctx.arc(p.x + 3, cy, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawScore(ctx: CanvasRenderingContext2D, score: number, best: number) {
+  ctx.save();
+  ctx.fillStyle = "#451a03";
+  ctx.font      = "bold 16px monospace";
+  ctx.textAlign = "right";
+  ctx.fillText(`RECORDE ${String(best).padStart(5, "0")}`, CANVAS_W - 14, 26);
+  ctx.fillText(String(score).padStart(5, "0"), CANVAS_W - 14, 48);
+  ctx.textAlign = "left";
+  ctx.restore();
+}
+
+function drawOverlay(ctx: CanvasRenderingContext2D, title: string, lines: string[]) {
+  ctx.save();
+  ctx.fillStyle = "rgba(69,26,3,0.62)";
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#fef08a";
+  ctx.font      = "bold 30px monospace";
+  ctx.fillText(title, CANVAS_W / 2, CANVAS_H / 2 - 22);
+
+  ctx.font      = "17px monospace";
+  ctx.fillStyle = "#fde68a";
+  lines.forEach((line, i) => {
+    ctx.fillText(line, CANVAS_W / 2, CANVAS_H / 2 + 14 + i * 26);
+  });
+  ctx.restore();
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
+
+export default function JogoPage() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stateRef  = useRef({
+    phase: "idle" as Phase,
+    beeY:  GROUND_Y / 2 - BEE_H,
+    beeVY: 0,
+    holding: false,   // espaço/toque mantido pressionado
+    obstacles: [] as Obs[],
+    predators: [] as Predator[],
+    nextPredator: PREDATOR_COOLDOWN_MIN, // frames até o próximo predador
+    killedBy: "" as string,              // nome do predador que causou a derrota
+    score: 0,
+    best:  0,
+    speed: OBS_SPEED_INIT,
+    frame: 0,
+  });
+  const rafRef = useRef<number>(0);
+
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [score, setScore] = useState(0);
+  const [best,  setBest ] = useState(0);
+
+  // carrega o recorde salvo (só no cliente, para evitar divergência de hidratação)
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const saved = loadBest();
+      stateRef.current.best = saved;
+      setBest(saved);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  function checkCollision(obs: Obs, beeY: number): boolean {
+    const bx1 = BEE_X + 6,      bx2 = BEE_X + BEE_W - 6;
+    const by1 = beeY  + 4,      by2 = beeY  + BEE_H - 4;
+    const ox1 = obs.x,           ox2 = obs.x + OBS_W;
+    if (bx2 < ox1 || bx1 > ox2) return false;
+    if (by1 < obs.topH)          return true;
+    if (by2 > obs.botY)          return true;
+    return false;
+  }
+
+  function checkPredatorCollision(p: Predator, beeY: number): boolean {
+    const bx1 = BEE_X + 6,  bx2 = BEE_X + BEE_W - 6;
+    const by1 = beeY + 4,   by2 = beeY + BEE_H - 4;
+    const px1 = p.x + 3,    px2 = p.x + p.w - 3;
+    const py1 = p.y + 2,    py2 = p.y + p.h - 2;
+    return !(bx2 < px1 || bx1 > px2 || by2 < py1 || by1 > py2);
+  }
+
+  function spawnPredator(frame: number): Predator {
+    const kinds: PredatorKind[] = ["aranha", "libelula", "bemtevi", "forideo"];
+    const kind = kinds[Math.floor(Math.random() * kinds.length)];
+    const { w, h, vx } = PREDATOR_SIZE[kind];
+    let baseY: number;
+    switch (kind) {
+      case "aranha":   baseY = 90 + Math.random() * 120; break;           // pendurada a meia altura
+      case "libelula": baseY = 90 + Math.random() * (GROUND_Y - 200); break;
+      case "bemtevi":  baseY = 10 + Math.random() * 60; break;            // começa no alto e mergulha
+      default:         baseY = 80 + Math.random() * (GROUND_Y - 190);
+    }
+    return {
+      kind, x: CANVAS_W + 40, y: baseY, baseY, w, h, vx,
+      phase: Math.random() * Math.PI * 2, born: frame, passed: false,
+    };
+  }
+
+  function spawnObs(fromX: number): Obs {
+    const gap  = OBS_GAP_MIN + Math.random() * (OBS_GAP_MAX - OBS_GAP_MIN);
+    const topH = 50 + Math.random() * (GROUND_Y - gap - 100);
+    return { x: fromX, topH, botY: topH + gap, passed: false };
+  }
+
+  function resetGame() {
+    const s   = stateRef.current;
+    s.phase   = "playing";
+    s.beeY    = GROUND_Y / 2 - BEE_H;
+    s.beeVY   = 0;
+    s.holding = false;
+    s.obstacles = [spawnObs(CANVAS_W + 80)];
+    s.predators = [];
+    s.nextPredator = PREDATOR_COOLDOWN_MIN;
+    s.killedBy = "";
+    s.score   = 0;
+    s.speed   = OBS_SPEED_INIT;
+    s.frame   = 0;
+    setPhase("playing");
+    setScore(0);
+  }
+
+  const handleAction = useCallback(() => {
+    const s = stateRef.current;
+    if      (s.phase === "idle")    { resetGame(); }
+    else if (s.phase === "playing") { s.beeVY = JUMP_V; }
+    else if (s.phase === "dead")    { resetGame(); }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Rastreia se o botão está pressionado para gravidade variável
+  useEffect(() => {
+    const onDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.code === "ArrowUp") {
+        e.preventDefault();
+        const s = stateRef.current;
+        if (!s.holding) {
+          s.holding = true;
+          handleAction();
+        }
+      }
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.code === "ArrowUp") {
+        stateRef.current.holding = false;
+      }
+    };
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup",   onUp);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup",   onUp);
+    };
+  }, [handleAction]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    function loop() {
+      if (!ctx) return;
+      const s = stateRef.current;
+      s.frame++;
+
+      // fundo — gradiente céu mais rico
+      drawSky(ctx);
+
+      const f = s.phase === "playing" ? s.frame : 0;
+
+      drawSun(ctx, s.frame);
+      drawClouds(ctx, f);
+      drawTrees(ctx, f);
+      drawGround(ctx, f);
+
+      if (s.phase === "playing") {
+        // física com gravidade variável
+        const grav = s.beeVY < 0 ? GRAVITY_NORMAL : GRAVITY_FALL;
+        s.beeVY = Math.min(s.beeVY + grav, MAX_FALL);
+        s.beeY  += s.beeVY;
+
+        // limites
+        if (s.beeY + BEE_H >= GROUND_Y) {
+          s.beeY  = GROUND_Y - BEE_H;
+          s.phase = "dead";
+          setPhase("dead");
+          if (s.score > s.best) { s.best = s.score; setBest(s.score); saveBest(s.score); }
+        }
+        if (s.beeY <= 0) { s.beeY = 0; s.beeVY = 0; }
+
+        // velocidade crescente
+        s.speed = Math.min(OBS_SPEED_MAX, s.speed + SPEED_INC);
+
+        // mover obstáculos
+        s.obstacles.forEach((o) => { o.x -= s.speed; });
+
+        // spawn novo obstáculo quando o último cruzou o limiar
+        const last = s.obstacles[s.obstacles.length - 1];
+        const spacing = OBS_SPACING_MIN + Math.random() * (OBS_SPACING_MAX - OBS_SPACING_MIN);
+        if (last && last.x < CANVAS_W - spacing) {
+          s.obstacles.push(spawnObs(CANVAS_W + 30));
+        }
+
+        // limpar fora da tela
+        s.obstacles = s.obstacles.filter((o) => o.x + OBS_W > -20);
+
+        // predadores: aparecem após alguns pontos e só quando há espaço livre
+        // depois do último favo, para não surgirem colados num obstáculo
+        s.nextPredator--;
+        if (
+          s.score >= PREDATOR_MIN_SCORE &&
+          s.nextPredator <= 0 &&
+          (!last || last.x < CANVAS_W - 220)
+        ) {
+          s.predators.push(spawnPredator(s.frame));
+          s.nextPredator =
+            PREDATOR_COOLDOWN_MIN + Math.random() * (PREDATOR_COOLDOWN_MAX - PREDATOR_COOLDOWN_MIN);
+        }
+
+        s.predators.forEach((p) => {
+          p.x -= s.speed + p.vx;
+          p.y  = predatorY(p, s.frame);
+        });
+        s.predators = s.predators.filter((p) => p.x + p.w > -60 && p.y < GROUND_Y + 40);
+
+        s.predators.forEach((p) => {
+          if (!p.passed && p.x + p.w < BEE_X) {
+            p.passed = true;
+            s.score++;
+            setScore(s.score);
+          }
+          if (s.phase === "playing" && checkPredatorCollision(p, s.beeY)) {
+            s.phase = "dead";
+            s.killedBy = p.kind;
+            setPhase("dead");
+            if (s.score > s.best) { s.best = s.score; setBest(s.score); saveBest(s.score); }
+          }
+        });
+
+        // score e colisão
+        s.obstacles.forEach((o) => {
+          if (!o.passed && o.x + OBS_W < BEE_X) {
+            o.passed = true;
+            s.score++;
+            setScore(s.score);
+          }
+          if (checkCollision(o, s.beeY)) {
+            s.phase = "dead";
+            setPhase("dead");
+            if (s.score > s.best) { s.best = s.score; setBest(s.score); saveBest(s.score); }
+          }
+        });
+      }
+
+      // obstáculos com gotinha de mel
+      s.obstacles.forEach((o) => {
+        drawHoneycomb(ctx, o.x, 0, OBS_W, o.topH);
+        drawHoneyDrip(ctx, o.x, o.topH, s.frame);
+        drawHoneycomb(ctx, o.x, o.botY, OBS_W, GROUND_Y - o.botY);
+      });
+
+      // predadores
+      s.predators.forEach((p) => drawPredator(ctx, p, s.frame));
+
+      // rastro de pólen + abelha
+      drawPollenTrail(ctx, BEE_X, s.beeY, s.frame);
+      drawBee(ctx, BEE_X, s.beeY, s.frame);
+
+      // score
+      drawScore(ctx, s.score, s.best);
+
+      // overlays
+      if (s.phase === "idle") {
+        drawOverlay(ctx, "🐝 Mandaçaia Run", [
+          "Pressione Espaço, seta para cima ou toque para começar",
+        ]);
+      }
+      if (s.phase === "dead") {
+        const killer = PREDATOR_LABEL[s.killedBy];
+        drawOverlay(ctx, killer ? `💥 Pega por ${killer}!` : "💥 Colisão!", [
+          `Pontuação: ${s.score}   Recorde: ${s.best}`,
+          "Espaço, seta para cima ou toque para recomeçar",
+        ]);
+      }
+
+      rafRef.current = requestAnimationFrame(loop);
+    }
+
+    rafRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  return (
+    <main className="min-h-screen px-4 py-8 flex flex-col items-center" aria-label="Jogo Mandaçaia Run">
+
+      {/* Nav pública — pill flutuante no desktop, barra no mobile */}
+      <div className="hidden sm:flex fixed top-6 right-16 z-50 items-center" role="navigation">
+        <div className="flex items-center bg-yellow-950 border-2 border-yellow-800 rounded-full px-2.5 py-2 gap-1.5 shadow-md">
+          <Link href="/" aria-label="Início"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
+            <House size={17} strokeWidth={2} />
+          </Link>
+          <Link href="/abelhas" aria-label="Abelhas"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
+            <Info size={17} strokeWidth={2} />
+          </Link>
+          <Link href="/dados" aria-label="Dados"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
+            <BarChart2 size={17} strokeWidth={2} />
+          </Link>
+          <Link href="/jogo" aria-label="Jogo" aria-current="page"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-400 text-yellow-950 scale-110 shadow-inner transition-all duration-200">
+            <Gamepad2 size={17} strokeWidth={2} />
+          </Link>
+          <Link href="/login" aria-label="Entrar"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-500 hover:bg-yellow-800 hover:text-yellow-300 transition-all duration-200">
+            <LogIn size={17} strokeWidth={2} />
+          </Link>
+        </div>
+      </div>
+
+      <div className="sm:hidden w-full max-w-5xl bg-yellow-950 rounded-2xl shadow-xl px-4 py-3 flex items-center justify-between mb-4" role="navigation">
+        <div className="flex items-center gap-1">
+          <Link href="/" aria-label="Início"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
+            <House size={17} strokeWidth={2} />
+          </Link>
+          <Link href="/abelhas" aria-label="Abelhas"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
+            <Info size={17} strokeWidth={2} />
+          </Link>
+          <Link href="/dados" aria-label="Dados"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
+            <BarChart2 size={17} strokeWidth={2} />
+          </Link>
+          <Link href="/jogo" aria-label="Jogo" aria-current="page"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-400 text-yellow-950 transition-all duration-200">
+            <Gamepad2 size={17} strokeWidth={2} />
+          </Link>
+        </div>
+        <Link href="/login" aria-label="Entrar"
+          className="flex items-center justify-center w-9 h-9 rounded-full text-yellow-400 hover:bg-yellow-900 transition-all duration-200">
+          <LogIn size={17} strokeWidth={2} />
+        </Link>
+      </div>
+
+      {/* Título em caixa */}
+      <div className="w-full max-w-5xl mb-4 sm:mt-16">
+        <div className="bg-yellow-950 rounded-2xl shadow-xl px-6 py-5 flex flex-col sm:flex-row items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-amber-400 flex items-center justify-center shrink-0 text-2xl" aria-hidden="true">🐝</div>
+          <div>
+            <h1 className="text-2xl font-black text-yellow-300">Mandaçaia Run</h1>
+            <p className="text-sm text-yellow-400 mt-0.5">Ajude a mandaçaia a desviar dos favos e dos predadores e bata seu recorde!</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <div
+        className="w-full max-w-5xl bg-yellow-950 rounded-2xl shadow-xl overflow-hidden cursor-pointer select-none"
+        onPointerDown={() => { stateRef.current.holding = true; handleAction(); }}
+        onPointerUp={()   => { stateRef.current.holding = false; }}
+        onPointerLeave={() => { stateRef.current.holding = false; }}
+        role="button"
+        aria-label="Área do jogo — clique ou pressione espaço para jogar"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); handleAction(); }
+        }}
+      >
+        <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} className="w-full h-auto" />
+      </div>
+
+      {/* Placar + controles */}
+      <div className="w-full max-w-5xl mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl shadow-xl p-4 flex flex-col gap-1">
+          <p className="text-xs text-gray-400 uppercase font-semibold tracking-wide">Pontuação</p>
+          <p className="text-3xl font-bold text-yellow-950">{String(score).padStart(5, "0")}</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-xl p-4 flex flex-col gap-1">
+          <p className="text-xs text-gray-400 uppercase font-semibold tracking-wide">Recorde</p>
+          <p className="text-3xl font-bold text-amber-600">{String(best).padStart(5, "0")}</p>
+        </div>
+        <div className="bg-yellow-950 rounded-2xl shadow-xl p-4 flex flex-col gap-2 col-span-2 sm:col-span-1">
+          <p className="text-xs text-yellow-500 uppercase font-semibold tracking-wide">Controles</p>
+          <div className="grid grid-cols-3 gap-2" role="list" aria-label="Formas de controlar a abelha">
+            <kbd
+              role="listitem"
+              className="flex items-center justify-center h-11 rounded-lg bg-yellow-100 text-yellow-950 border-b-4 border-yellow-600 text-sm font-bold font-sans"
+            >
+              Espaço
+            </kbd>
+            <kbd
+              role="listitem"
+              aria-label="Seta para cima"
+              className="flex items-center justify-center h-11 rounded-lg bg-yellow-100 text-yellow-950 border-b-4 border-yellow-600"
+            >
+              <ArrowUp size={20} strokeWidth={3} aria-hidden="true" />
+            </kbd>
+            <span
+              role="listitem"
+              className="flex items-center justify-center h-11 rounded-lg bg-yellow-900 border border-yellow-700 text-yellow-300 text-sm font-bold"
+            >
+              Toque
+            </span>
+          </div>
+          <p className="text-sm text-yellow-400">Pressione para fazer a abelha subir e desviar dos favos de mel e dos predadores (aranha, libélula, bem-te-vi e forídeo)!</p>
+        </div>
+      </div>
+
+      {phase === "dead" && (
+        <button
+          onClick={handleAction}
+          className="mt-5 flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-yellow-950 font-bold text-lg px-8 py-3 rounded-xl shadow-lg transition-colors"
+        >
+          <RotateCcw size={18} /> Jogar de novo
+        </button>
+      )}
+
+      <p className="text-center text-xs text-yellow-800 opacity-60 mt-6 pb-4">
+        © {new Date().getFullYear()} Projeto Colmeia Smart · SENAI Gaspar Ricardo Júnior
+      </p>
+    </main>
+  );
+}
